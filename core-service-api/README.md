@@ -1,0 +1,1 @@
+“Backend placeholder – estructura (dto/controller/module/service)”
