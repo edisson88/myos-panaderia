@@ -1,0 +1,12 @@
+# root
+env.env
+.env
+.env.local
+
+# frontend
+web-app/node_modules/
+web-app/dist/
+
+# backend (por si luego aplica)
+core-service-api/node_modules/
+core-service-api/dist/
