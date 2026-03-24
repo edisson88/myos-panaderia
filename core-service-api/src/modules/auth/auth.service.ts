@@ -38,8 +38,12 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // 2. Check account status
-    if (user.user_status !== 'active') {
+    // 2. Check account status (user_status can be boolean true or string 'true')
+    const isActive =
+      user.user_status === true ||
+      user.user_status === 'true' ||
+      (user.user_status as unknown) === 1;
+    if (!isActive) {
       throw new UnauthorizedException('Account is inactive');
     }
 

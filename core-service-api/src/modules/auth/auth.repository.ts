@@ -27,7 +27,7 @@ export interface HasuraUser {
   name: string;
   email: string;
   password: string;
-  user_status: string;
+  user_status: boolean | string;
   rol: HasuraUserRol;
 }
 
