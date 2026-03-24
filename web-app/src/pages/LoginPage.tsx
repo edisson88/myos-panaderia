@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
+    Alert,
     Box,
     Button,
     Container,
@@ -18,7 +19,8 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "react-router-dom";
 import * as z from "zod";
-import loginBg from "../assets/login_bg.png"; // Usamos la imagen generada
+import loginBg from "../assets/login_bg.png";
+import { useAuth } from "../hooks/useAuth.ts";
 
 const loginSchema = z.object({
     email: z.string().email("Correo electrónico inválido").min(1, "El correo es obligatorio"),
@@ -31,6 +33,7 @@ export default function LoginPage() {
     const theme = useTheme();
     const navigate = useNavigate();
     const [showPassword, setShowPassword] = useState(false);
+    const { login, error: authError, clearError, isLoading, isAuthenticated } = useAuth();
 
     const {
         control,
@@ -44,12 +47,25 @@ export default function LoginPage() {
         },
     });
 
-    const onSubmit = (data: LoginFormData) => {
-        // Simulación de funcionamiento del login
-        console.log("Login form submitted:", data);
-        
-        // Redirigir al dashboard tras validación exitosa
-        navigate("/");
+    useEffect(() => {
+        if (isAuthenticated) {
+            navigate("/", { replace: true });
+        }
+    }, [isAuthenticated, navigate]);
+
+    useEffect(() => {
+        return () => {
+            clearError();
+        };
+    }, [clearError]);
+
+    const onSubmit = async (data: LoginFormData) => {
+        try {
+            await login(data);
+            navigate("/", { replace: true });
+        } catch {
+            // El mensaje de error ya se gestiona en AuthContext.
+        }
     };
 
     return (
@@ -151,6 +167,8 @@ export default function LoginPage() {
 
                     <form onSubmit={handleSubmit(onSubmit)}>
                         <Stack spacing={2.5}>
+                            {authError && <Alert severity="error">{authError}</Alert>}
+
                             <Controller
                                 name="email"
                                 control={control}
@@ -236,6 +254,7 @@ export default function LoginPage() {
                                 variant="contained"
                                 fullWidth
                                 size="large"
+                                disabled={isLoading}
                                 sx={{
                                     mt: 2,
                                     py: 1.8,
@@ -252,7 +271,7 @@ export default function LoginPage() {
                                     transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
                                 }}
                             >
-                                Iniciar Sesión
+                                {isLoading ? "Ingresando..." : "Iniciar Sesión"}
                             </Button>
 
                             <Typography variant="body2" color="text.secondary" sx={{ mt: 2, fontWeight: 500 }}>

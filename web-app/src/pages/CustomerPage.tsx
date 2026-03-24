@@ -23,8 +23,8 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 
-import type { Client } from "../modules/clients/clientsTypes";
-import ClientDialog from "../modules/clients/components/ClientDialog";
+import type { Client } from "../modules/customers/clientsTypes";
+import ClientDialog from "../modules/customers/components/ClientDialog";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { useEntityManagement } from "../hooks/useEntityManagement";
 

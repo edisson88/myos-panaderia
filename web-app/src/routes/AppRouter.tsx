@@ -2,9 +2,10 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import AppLayout from '../layout/AppLayout';
 import DashboardPage from '../pages/DashboardPage';
 import OrdersPage from '../pages/OrdersPage';
-import ClientsPage from '../pages/ClientsPage';
+import ClientsPage from '../pages/CustomerPage';
 import ProductsPage from '../pages/ProductsPage';
 import LoginPage from '../pages/LoginPage';
+import ProtectedRoute from '../components/auth/ProtectedRoute';
 
 
 export default function AppRouter() {
@@ -12,7 +13,13 @@ export default function AppRouter() {
         <BrowserRouter>
             <Routes>
                 <Route path="/login" element={<LoginPage />} />
-                <Route element={<AppLayout />}>
+                <Route
+                    element={(
+                        <ProtectedRoute>
+                            <AppLayout />
+                        </ProtectedRoute>
+                    )}
+                >
                     <Route path="/" element={<DashboardPage />} />
                     <Route path="/orders" element={<OrdersPage />} />
                     <Route path="/clientes" element={<ClientsPage />} />
