@@ -19,7 +19,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "react-router-dom";
 import * as z from "zod";
-import loginBg from "../assets/login_bg.png";
+//import loginBg from "../assets/login_bg.png";
 import { useAuth } from "../hooks/useAuth.ts";
 
 const loginSchema = z.object({
@@ -48,10 +48,12 @@ export default function LoginPage() {
     });
 
     useEffect(() => {
-        if (isAuthenticated) {
+        // Skip redirect while loading to allow logout to complete
+        // This ensures logout state updates are processed before deciding to redirect
+        if (isAuthenticated && !isLoading) {
             navigate("/", { replace: true });
         }
-    }, [isAuthenticated, navigate]);
+    }, [isAuthenticated, isLoading, navigate]);
 
     useEffect(() => {
         return () => {
@@ -92,7 +94,7 @@ export default function LoginPage() {
                 loop
                 muted
                 playsInline
-                poster={loginBg}
+                //poster={loginBg}
                 sx={{
                     position: "absolute",
                     top: "50%",

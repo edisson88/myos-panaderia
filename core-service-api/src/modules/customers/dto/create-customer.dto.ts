@@ -28,6 +28,10 @@ export class CreateCustomerDto {
   active?: boolean;
 
   @IsOptional()
+  @IsString()
+  label?: string;
+
+  @IsOptional()
   @IsUUID()
   user_id?: string;
 }

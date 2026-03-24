@@ -56,6 +56,7 @@
 | address    | text       | NO |
 | phone      | text       | NO |
 | email      | text       | NO |
+| label      | text       | YES |
 | active     | boolean    | YES |
 | dni        | text       | YES |
 | user_id    | uuid       | YES |

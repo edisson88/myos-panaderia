@@ -10,8 +10,6 @@ import {
     Grid,
     FormControlLabel,
     Switch,
-    Autocomplete,
-    Chip,
 } from "@mui/material";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,18 +18,16 @@ import type { Client, CreateClientInput } from "../clientsTypes";
 
 const clientSchema = z.object({
     name: z.string().min(3, "El nombre debe tener al menos 3 caracteres"),
+    email: z.string().email("Correo electrónico inválido").min(1, "El correo es obligatorio"),
+    phone: z.string().min(5, "El teléfono debe tener al menos 5 caracteres"),
+    address: z.string().min(5, "La dirección debe tener al menos 5 caracteres"),
     dni: z.string().min(5, "El documento debe tener al menos 5 caracteres").optional().or(z.literal("")),
-    address: z.string().optional(),
-    phone: z.string().optional(),
-    email: z.string().email("Correo electrónico inválido").optional().or(z.literal("")),
+    label: z.string().optional().or(z.literal("")),
     active: z.boolean().default(true),
-    tags: z.array(z.string()).default([]),
 });
 
-type ClientFormData = z.infer<typeof clientSchema>;
+type ClientFormOutput = z.output<typeof clientSchema>;
 type ClientFormInput = z.input<typeof clientSchema>;
-
-const AVAILABLE_TAGS = ["Mayorista", "Minorista", "Frecuente", "Nuevo", "VIP", "Empresa"];
 
 interface ClientDialogProps {
     open: boolean;
@@ -48,16 +44,16 @@ export default function ClientDialog({ open, onClose, client, onSave }: ClientDi
         handleSubmit,
         reset,
         formState: { errors },
-    } = useForm<ClientFormInput, any, ClientFormData>({
+    } = useForm<ClientFormInput, any, ClientFormOutput>({
         resolver: zodResolver(clientSchema),
         defaultValues: {
             name: "",
-            dni: "",
-            address: "",
-            phone: "",
             email: "",
+            phone: "",
+            address: "",
+            dni: "",
+            label: "",
             active: true,
-            tags: [],
         },
     });
 
@@ -65,18 +61,22 @@ export default function ClientDialog({ open, onClose, client, onSave }: ClientDi
         if (open) {
             reset({
                 name: client?.name || "",
-                dni: client?.dni || "",
-                address: client?.address || "",
-                phone: client?.phone || "",
                 email: client?.email || "",
+                phone: client?.phone || "",
+                address: client?.address || "",
+                dni: client?.dni || "",
+                label: client?.label || "",
                 active: client?.active ?? true,
-                tags: client?.tags || [],
             });
         }
     }, [open, client, reset]);
 
-    const onSubmit = (data: ClientFormData) => {
-        onSave(data as CreateClientInput);
+    const onSubmit = (data: ClientFormOutput) => {
+        onSave({
+            ...data,
+            dni: data.dni || undefined,
+            label: data.label || undefined,
+        } as CreateClientInput);
     };
 
     return (
@@ -105,6 +105,23 @@ export default function ClientDialog({ open, onClose, client, onSave }: ClientDi
                                         fullWidth
                                         error={!!errors.name}
                                         helperText={errors.name?.message}
+                                        size="small"
+                                    />
+                                )}
+                            />
+                        </Grid>
+
+                        <Grid size={{ xs: 12 }}>
+                            <Controller
+                                name="email"
+                                control={control}
+                                render={({ field }) => (
+                                    <TextField
+                                        {...field}
+                                        label="Email"
+                                        fullWidth
+                                        error={!!errors.email}
+                                        helperText={errors.email?.message}
                                         size="small"
                                     />
                                 )}
@@ -146,23 +163,6 @@ export default function ClientDialog({ open, onClose, client, onSave }: ClientDi
                         
                         <Grid size={{ xs: 12 }}>
                             <Controller
-                                name="email"
-                                control={control}
-                                render={({ field }) => (
-                                    <TextField
-                                        {...field}
-                                        label="Email"
-                                        fullWidth
-                                        error={!!errors.email}
-                                        helperText={errors.email?.message}
-                                        size="small"
-                                    />
-                                )}
-                            />
-                        </Grid>
-                        
-                        <Grid size={{ xs: 12 }}>
-                            <Controller
                                 name="address"
                                 control={control}
                                 render={({ field }) => (
@@ -178,39 +178,17 @@ export default function ClientDialog({ open, onClose, client, onSave }: ClientDi
                             />
                         </Grid>
 
-                        <Grid size={{ xs: 12 }}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <Controller
-                                name="tags"
+                                name="label"
                                 control={control}
                                 render={({ field }) => (
-                                    <Autocomplete
-                                        multiple
-                                        options={AVAILABLE_TAGS}
-                                        value={field.value}
-                                        onChange={(_, newValue) => field.onChange(newValue)}
-                                        renderTags={(value: string[], getTagProps) =>
-                                            value.map((option: string, index: number) => {
-                                                const { key: _key, ...tagProps } = getTagProps({ index });
-                                                return (
-                                                    <Chip
-                                                        key={option}
-                                                        variant="outlined"
-                                                        label={option}
-                                                        {...tagProps}
-                                                        size="small"
-                                                        sx={{ borderRadius: 1.5, fontWeight: 600 }}
-                                                    />
-                                                );
-                                            })
-                                        }
-                                        renderInput={(params) => (
-                                            <TextField
-                                                {...params}
-                                                label="Etiquetas de segmentación"
-                                                placeholder="Seleccionar..."
-                                                size="small"
-                                            />
-                                        )}
+                                    <TextField
+                                        {...field}
+                                        label="Etiqueta"
+                                        placeholder="Ej: VIP, Mayorista"
+                                        fullWidth
+                                        size="small"
                                     />
                                 )}
                             />

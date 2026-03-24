@@ -1,9 +1,8 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import AppLayout from '../layout/AppLayout';
 import DashboardPage from '../pages/DashboardPage';
 import OrdersPage from '../pages/OrdersPage';
-import ClientsPage from '../pages/CustomerPage';
-import ProductsPage from '../pages/ProductsPage';
+import CustomerPage from '../pages/CustomerPage';
 import LoginPage from '../pages/LoginPage';
 import ProtectedRoute from '../components/auth/ProtectedRoute';
 
@@ -21,8 +20,8 @@ export default function AppRouter() {
                     )}
                 >
                     <Route path="/" element={<DashboardPage />} />
-                    <Route path="/orders" element={<OrdersPage />} />
-                    {/* <Route path="customers" element={<CustomerPage />} /> */}
+                    <Route path="/pedidos" element={<OrdersPage />} />
+                    <Route path="/clientes" element={<CustomerPage />} />
                 </Route>
             </Routes>
         </BrowserRouter>

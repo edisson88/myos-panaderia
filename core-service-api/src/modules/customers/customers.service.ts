@@ -17,6 +17,7 @@ export interface CustomerProfile {
   phone: string;
   address: string;
   dni: string | null;
+  label: string | null;
   active: boolean;
 }
 
@@ -79,6 +80,7 @@ export class CustomersService {
       address: customer.address,
       dni: customer.dni,
       active: customer.active,
+      label: customer.label,
     };
   }
 }

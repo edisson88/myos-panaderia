@@ -1,8 +1,11 @@
 import {
+    Alert,
     Box,
+    Button,
     Card,
     CardContent,
     Chip,
+    CircularProgress,
     InputAdornment,
     Stack,
     Table,
@@ -18,78 +21,209 @@ import {
     IconButton,
     Tooltip,
 } from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
 import SearchIcon from "@mui/icons-material/Search";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
+import { useEffect, useMemo, useState } from "react";
 
-import type { Client } from "../modules/customers/clientsTypes";
+import type { Client, CreateClientInput } from "../modules/customers/clientsTypes";
 import ClientDialog from "../modules/customers/components/ClientDialog";
-import ConfirmDialog from "../components/ConfirmDialog";
-import { useEntityManagement } from "../hooks/useEntityManagement";
+import ConfirmDialog from "../components/ConfirmDialog.tsx";
+import { useAuth } from "../hooks/useAuth.ts";
+import {
+    createCustomer,
+    deleteCustomer,
+    getCustomers,
+    updateCustomer,
+} from "../modules/customers/customers.service";
 
-const initialMockClients: Client[] = [
-    {
-        id: "1",
-        name: "María Cárdenas",
-        dni: "1010202303",
-        address: "Calle 12 # 45-67",
-        phone: "310-456-7890",
-        email: "maria.paula@email.com",
-        active: true,
-        tags: ["Frecuente", "VIP"],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-    },
-    {
-        id: "2",
-        name: "Pastelería Delicias de la Abuela",
-        dni: "NIT: 800.123.456-1",
-        address: "Av. Santander # 10-20",
-        phone: "320-123-4455",
-        email: "contacto@deliciasabuela.com",
-        active: true,
-        tags: ["Mayorista", "Empresa"],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-    },
-];
+type SortField = "name" | "active";
+
+interface DeleteDialogState {
+    open: boolean;
+    id: string | null;
+    name: string;
+}
 
 export default function ClientsPage() {
-    const {
-        entities: clients,
-        totalCount,
-        search,
-        setSearch,
-        page,
-        setPage,
-        rowsPerPage,
-        setRowsPerPage,
-        order,
-        orderBy,
-        handleSort,
-        isDialogOpen,
-        editingEntity: editingClient,
-        handleOpenEdit,
-        handleCloseDialog,
-        handleSaveEntity: handleSaveClient,
-        handleDeleteEntity,
-        confirmState,
-        setConfirmState,
-    } = useEntityManagement<Client>(
-        initialMockClients,
-        (client, query) => 
-            client.name.toLowerCase().includes(query.toLowerCase()) ||
-            !!client.email?.toLowerCase().includes(query.toLowerCase()) ||
-            !!client.dni?.toLowerCase().includes(query.toLowerCase()),
-        "cliente"
-    );
+    const { token } = useAuth();
+
+    const [customers, setCustomers] = useState<Client[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const [search, setSearch] = useState("");
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
+    const [order, setOrder] = useState<"asc" | "desc">("asc");
+    const [orderBy, setOrderBy] = useState<SortField>("name");
+
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [editingCustomer, setEditingCustomer] = useState<Client | null>(null);
+
+    const [deleteDialog, setDeleteDialog] = useState<DeleteDialogState>({
+        open: false,
+        id: null,
+        name: "",
+    });
+
+    const loadCustomers = async () => {
+        if (!token) {
+            setCustomers([]);
+            setLoading(false);
+            setError("No hay sesión activa para consultar clientes");
+            return;
+        }
+
+        setLoading(true);
+        setError(null);
+
+        try {
+            const data = await getCustomers(token);
+            setCustomers(data);
+        } catch (err) {
+            const message = err instanceof Error ? err.message : "No se pudo cargar clientes";
+            setError(message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        void loadCustomers();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [token]);
+
+    const filteredCustomers = useMemo(() => {
+        const query = search.trim().toLowerCase();
+        if (!query) {
+            return customers;
+        }
+
+        return customers.filter((customer) =>
+            customer.name.toLowerCase().includes(query) ||
+            customer.email.toLowerCase().includes(query) ||
+            (customer.dni ?? "").toLowerCase().includes(query),
+        );
+    }, [customers, search]);
+
+    const sortedCustomers = useMemo(() => {
+        const sorted = [...filteredCustomers];
+
+        sorted.sort((a, b) => {
+            const aValue = a[orderBy];
+            const bValue = b[orderBy];
+
+            if (aValue < bValue) {
+                return order === "asc" ? -1 : 1;
+            }
+            if (aValue > bValue) {
+                return order === "asc" ? 1 : -1;
+            }
+            return 0;
+        });
+
+        return sorted;
+    }, [filteredCustomers, order, orderBy]);
+
+    const paginatedCustomers = useMemo(() => {
+        const start = page * rowsPerPage;
+        return sortedCustomers.slice(start, start + rowsPerPage);
+    }, [sortedCustomers, page, rowsPerPage]);
+
+    const handleSort = (field: SortField) => {
+        if (orderBy === field) {
+            setOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+            return;
+        }
+
+        setOrderBy(field);
+        setOrder("asc");
+    };
+
+    const handleOpenCreate = () => {
+        setEditingCustomer(null);
+        setIsDialogOpen(true);
+    };
+
+    const handleOpenEdit = (customer: Client) => {
+        setEditingCustomer(customer);
+        setIsDialogOpen(true);
+    };
+
+    const handleCloseDialog = () => {
+        if (!submitting) {
+            setIsDialogOpen(false);
+            setEditingCustomer(null);
+        }
+    };
+
+    const handleSaveCustomer = async (payload: CreateClientInput) => {
+        if (!token) {
+            setError("No hay sesión activa para guardar clientes");
+            return;
+        }
+
+        setSubmitting(true);
+        setError(null);
+
+        try {
+            if (editingCustomer) {
+                await updateCustomer(editingCustomer.id, payload, token);
+            } else {
+                await createCustomer(payload, token);
+            }
+
+            setIsDialogOpen(false);
+            setEditingCustomer(null);
+            await loadCustomers();
+        } catch (err) {
+            const message = err instanceof Error ? err.message : "No se pudo guardar el cliente";
+            setError(message);
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const handleAskDelete = (customer: Client) => {
+        setDeleteDialog({
+            open: true,
+            id: customer.id,
+            name: customer.name,
+        });
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!token || !deleteDialog.id) {
+            setDeleteDialog({ open: false, id: null, name: "" });
+            return;
+        }
+
+        setSubmitting(true);
+        setError(null);
+
+        try {
+            await deleteCustomer(deleteDialog.id, token);
+            setDeleteDialog({ open: false, id: null, name: "" });
+            await loadCustomers();
+        } catch (err) {
+            const message = err instanceof Error ? err.message : "No se pudo eliminar el cliente";
+            setError(message);
+        } finally {
+            setSubmitting(false);
+        }
+    };
 
     return (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
 
+            {error && <Alert severity="error">{error}</Alert>}
+
             <Card sx={{ borderRadius: 3 }}>
-                <CardContent sx={{ py: 2, "&:last-child": { pb: 2 } }}>
+                <CardContent sx={{ py: 2, "&:last-child": { pb: 2 }, display: "flex", gap: 2 }}>
                     <TextField
                         fullWidth size="small"
                         placeholder="Buscar por nombre, documento o correo..."
@@ -104,6 +238,14 @@ export default function ClientsPage() {
                         }}
                         sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2.5, bgcolor: "rgba(0,0,0,0.02)" } }}
                     />
+                    <Button
+                        variant="contained"
+                        startIcon={<AddIcon />}
+                        onClick={handleOpenCreate}
+                        sx={{ borderRadius: 2, px: 2.5, whiteSpace: "nowrap" }}
+                    >
+                        Nuevo cliente
+                    </Button>
                 </CardContent>
             </Card>
 
@@ -137,7 +279,23 @@ export default function ClientsPage() {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {clients.map((client) => (
+                        {loading && (
+                            <TableRow>
+                                <TableCell colSpan={5} align="center" sx={{ py: 5 }}>
+                                    <CircularProgress size={28} />
+                                </TableCell>
+                            </TableRow>
+                        )}
+
+                        {!loading && paginatedCustomers.length === 0 && (
+                            <TableRow>
+                                <TableCell colSpan={5} align="center" sx={{ py: 5 }}>
+                                    <Typography color="text.secondary">No se encontraron clientes</Typography>
+                                </TableCell>
+                            </TableRow>
+                        )}
+
+                        {!loading && paginatedCustomers.map((client) => (
                             <TableRow key={client.id} hover>
                                 <TableCell>
                                     <Box>
@@ -149,12 +307,15 @@ export default function ClientsPage() {
                                     </Box>
                                 </TableCell>
                                 <TableCell>
-                                    <Stack direction="row" spacing={0.5} flexWrap="wrap">
-                                        {client.tags?.map((tag) => (
-                                            <Chip key={tag} label={tag} size="small" sx={{ fontSize: "0.65rem", fontWeight: 700, borderRadius: 1 }} />
-                                        ))}
-                                        {(!client.tags || client.tags.length === 0) && <Typography variant="caption" color="text.disabled">Sin tags</Typography>}
-                                    </Stack>
+                                    {client.label ? (
+                                        <Chip
+                                            label={client.label}
+                                            size="small"
+                                            sx={{ fontSize: "0.7rem", fontWeight: 700, borderRadius: 1 }}
+                                        />
+                                    ) : (
+                                        <Typography variant="caption" color="text.disabled">Sin etiqueta</Typography>
+                                    )}
                                 </TableCell>
                                 <TableCell>
                                     <Typography variant="body2">{client.phone}</Typography>
@@ -176,7 +337,11 @@ export default function ClientsPage() {
                                             </IconButton>
                                         </Tooltip>
                                         <Tooltip title="Eliminar">
-                                            <IconButton size="small" onClick={() => handleDeleteEntity(client.id, "cliente")}>
+                                            <IconButton
+                                                size="small"
+                                                disabled={submitting}
+                                                onClick={() => handleAskDelete(client)}
+                                            >
                                                 <DeleteIcon fontSize="small" color="error" />
                                             </IconButton>
                                         </Tooltip>
@@ -190,7 +355,7 @@ export default function ClientsPage() {
                 <TablePagination
                     rowsPerPageOptions={[5, 10, 25]}
                     component="div"
-                    count={totalCount}
+                    count={sortedCustomers.length}
                     rowsPerPage={rowsPerPage}
                     page={page}
                     onPageChange={(_, newPage) => setPage(newPage)}
@@ -204,16 +369,16 @@ export default function ClientsPage() {
             <ClientDialog
                 open={isDialogOpen}
                 onClose={handleCloseDialog}
-                client={editingClient}
-                onSave={handleSaveClient}
+                                client={editingCustomer ?? undefined}
+                                onSave={handleSaveCustomer}
             />
 
             <ConfirmDialog
-                open={confirmState.open}
-                title={confirmState.title}
-                message={confirmState.message}
-                onClose={() => setConfirmState((prev) => ({ ...prev, open: false }))}
-                onConfirm={confirmState.onConfirm}
+                                open={deleteDialog.open}
+                                title="Eliminar cliente"
+                                message={`¿Seguro que deseas eliminar a ${deleteDialog.name}?`}
+                                onClose={() => setDeleteDialog({ open: false, id: null, name: "" })}
+                                onConfirm={handleConfirmDelete}
             />
         </Box>
     );

@@ -21,6 +21,7 @@ import BarChartIcon from "@mui/icons-material/BarChart";
 import SettingsIcon from "@mui/icons-material/Settings";
 import LogoutIcon from "@mui/icons-material/Logout";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth.ts";
 
 export const SIDEBAR_WIDTH = 220;
 
@@ -30,7 +31,7 @@ const BRAND_COLOR_ACTIVE = "#8b4f3d";
 
 const navItems = [
     { label: "Dashboard", icon: <DashboardIcon fontSize="small" />, path: "/" },
-    { label: "Pedidos", icon: <ReceiptLongIcon fontSize="small" />, path: "/orders" },
+    { label: "Pedidos", icon: <ReceiptLongIcon fontSize="small" />, path: "/pedidos" },
     { label: "Clientes", icon: <PeopleIcon fontSize="small" />, path: "/clientes" },
     { label: "Productos", icon: <ShoppingBagIcon fontSize="small" />, path: "/productos" },
     { label: "Producción", icon: <PrecisionManufacturingIcon fontSize="small" />, path: "/produccion" },
@@ -51,10 +52,18 @@ interface SidebarProps {
 export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
     const location = useLocation();
     const navigate = useNavigate();
+    const { logout } = useAuth();
     const theme = useTheme();
     const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
 
     const handleNav = (path: string) => {
+        if (path === "/logout") {
+            logout();
+            navigate("/login", { replace: true });
+            if (!isDesktop) onClose();
+            return;
+        }
+
         navigate(path);
         if (!isDesktop) onClose(); // close drawer on mobile after navigation
     };

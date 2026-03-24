@@ -62,8 +62,12 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
     };
 
     const handleLogout = () => {
+        // Clear session and ensure state updates complete before navigation
         logout();
-        navigate("/login", { replace: true });
+        // Small delay to allow React to process state updates
+        setTimeout(() => {
+            navigate("/login", { replace: true });
+        }, 0);
     };
 
     return (

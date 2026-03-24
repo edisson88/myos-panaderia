@@ -20,6 +20,7 @@ export interface HasuraCustomer {
   dni: string | null;
   active: boolean;
   user_id: string | null;
+  label: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -90,6 +91,7 @@ export class CustomersRepository {
           dni: dto.dni ?? null,
           active: dto.active ?? true,
           user_id: dto.user_id ?? null,
+          label: dto.label ?? null,
         },
       );
     return result.insert_customers_one;
