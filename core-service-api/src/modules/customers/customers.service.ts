@@ -6,6 +6,9 @@ import {
 import { CustomersRepository } from './customers.repository';
 import { JwtPayload } from '../../common/interfaces/jwt-payload.interface';
 import { UserRole } from '../../common/enums/user-role.enum';
+import { CreateCustomerDto } from './dto/create-customer.dto';
+import { UpdateCustomerDto } from './dto/update-customer.dto';
+import { HasuraCustomer } from './customers.repository';
 
 export interface CustomerProfile {
   id: string;
@@ -13,7 +16,7 @@ export interface CustomerProfile {
   email: string;
   phone: string;
   address: string;
-  dni: string;
+  dni: string | null;
   active: boolean;
 }
 
@@ -23,10 +26,36 @@ export class CustomersService {
     private readonly customersRepository: CustomersRepository,
   ) {}
 
-  /**
-   * Returns the customer profile linked to the authenticated user.
-   * Only users with role 'customer' have a customer profile.
-   */
+  // ── Admin CRUD ─────────────────────────────────────────────────────────────
+
+  async findAll(): Promise<HasuraCustomer[]> {
+    return this.customersRepository.findAll();
+  }
+
+  async findById(id: string): Promise<HasuraCustomer> {
+    const customer = await this.customersRepository.findById(id);
+    if (!customer) {
+      throw new NotFoundException(`Customer with id ${id} not found`);
+    }
+    return customer;
+  }
+
+  async create(dto: CreateCustomerDto): Promise<HasuraCustomer> {
+    return this.customersRepository.create(dto);
+  }
+
+  async update(id: string, dto: UpdateCustomerDto): Promise<HasuraCustomer> {
+    await this.findById(id); // ensures the record exists before updating
+    return this.customersRepository.update(id, dto);
+  }
+
+  async remove(id: string): Promise<{ id: string }> {
+    await this.findById(id); // ensures the record exists before deleting
+    return this.customersRepository.remove(id);
+  }
+
+  // ── Customer self-service ──────────────────────────────────────────────────
+
   async getMyProfile(user: JwtPayload): Promise<CustomerProfile> {
     if (user.role !== UserRole.CUSTOMER) {
       throw new ForbiddenException(
@@ -53,3 +82,4 @@ export class CustomersService {
     };
   }
 }
+
