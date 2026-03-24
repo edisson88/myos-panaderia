@@ -13,7 +13,7 @@ import {
     Autocomplete,
     Chip,
 } from "@mui/material";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import type { Client, CreateClientInput } from "../clientsTypes";
@@ -28,7 +28,10 @@ const clientSchema = z.object({
     tags: z.array(z.string()).default([]),
 });
 
-type ClientFormData = z.infer<typeof clientSchema>;
+// z.input: types BEFORE defaults are applied (active?: boolean | undefined)
+// z.output: types AFTER defaults are applied (active: boolean)
+type ClientFormInput = z.input<typeof clientSchema>;
+type ClientFormData = z.output<typeof clientSchema>;
 
 const AVAILABLE_TAGS = ["Mayorista", "Minorista", "Frecuente", "Nuevo", "VIP", "Empresa"];
 
@@ -47,7 +50,7 @@ export default function ClientDialog({ open, onClose, client, onSave }: ClientDi
         handleSubmit,
         reset,
         formState: { errors },
-    } = useForm<ClientFormData>({
+    } = useForm<ClientFormInput, any, ClientFormData>({
         resolver: zodResolver(clientSchema),
         defaultValues: {
             name: "",
@@ -74,9 +77,11 @@ export default function ClientDialog({ open, onClose, client, onSave }: ClientDi
         }
     }, [open, client, reset]);
 
-    const onSubmit = (data: ClientFormData) => {
+    const onSubmit: SubmitHandler<ClientFormData> = (data) => {
         onSave(data as CreateClientInput);
     };
+
+    const handleFormSubmit = handleSubmit(onSubmit);
 
     return (
         <Dialog 
@@ -242,7 +247,7 @@ export default function ClientDialog({ open, onClose, client, onSave }: ClientDi
                     Cancelar
                 </Button>
                 <Button 
-                    onClick={handleSubmit(onSubmit)} 
+                    onClick={handleFormSubmit} 
                     variant="contained" 
                     sx={{ 
                         bgcolor: "#6B3A2A", 
