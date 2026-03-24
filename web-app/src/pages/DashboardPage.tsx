@@ -14,6 +14,7 @@ import {
     Typography,
 } from "@mui/material";
 
+import { useNavigate } from "react-router-dom";
 import type { Kpi, QuickAction, AlertItem, RecentOrderRow } from "../modules/dashboard/dashboardTypes";
 
 const kpis: Kpi[] = [
@@ -67,6 +68,7 @@ const recentOrders: RecentOrderRow[] = [
 ];
 
 export default function DashboardPage() {
+    const navigate = useNavigate();
     return (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
             {/* KPIs */}
@@ -139,7 +141,19 @@ export default function DashboardPage() {
 
                                                 {/* botón placeholder (luego conectas navegación/acciones) */}
                                                 <Box sx={{ mt: 1.5 }}>
-                                                    <Button size="small" variant="text">
+                                                    <Button 
+                                                        size="small" 
+                                                        variant="text"
+                                                        onClick={() => {
+                                                            if (qa.title === "Nuevo cliente") {
+                                                                navigate("/clientes?openModal=true");
+                                                            } else if (qa.title === "Crear pedido") {
+                                                                navigate("/orders");
+                                                            } else if (qa.title === "Nuevo producto") {
+                                                                navigate("/productos");
+                                                            }
+                                                        }}
+                                                    >
                                                         Abrir
                                                     </Button>
                                                 </Box>

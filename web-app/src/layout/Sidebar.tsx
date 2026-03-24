@@ -55,7 +55,13 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
     const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
 
     const handleNav = (path: string) => {
-        navigate(path);
+        if (path === "/logout") {
+            // Simulación de cierre de sesión
+            console.log("Sesión cerrada.");
+            navigate("/login");
+        } else {
+            navigate(path);
+        }
         if (!isDesktop) onClose(); // close drawer on mobile after navigation
     };
 

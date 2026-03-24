@@ -1,4 +1,4 @@
-import { Box, Typography } from "@mui/material";
+import { Box } from "@mui/material";
 import { useMemo, useState } from "react";
 
 import OrdersFilters from "../modules/orders/components/OrdersFilters";
@@ -133,14 +133,6 @@ export default function OrdersPage() {
 
     return (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <Box>
-                <Typography variant="h2" sx={{ fontWeight: 900 }}>
-                    Pedidos
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                    Historial de pedidos, métricas principales y detalle por productos
-                </Typography>
-            </Box>
 
             <OrdersFilters value={filters} onChange={setFilters} onApply={handleApply} onClear={handleClear} />
 

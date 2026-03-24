@@ -3,26 +3,60 @@ import {
     Box,
     Button,
     IconButton,
-    InputAdornment,
-    TextField,
     Toolbar,
     Typography,
     useMediaQuery,
     useTheme,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
-import SearchIcon from "@mui/icons-material/Search";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import AddIcon from "@mui/icons-material/Add";
 import { SIDEBAR_WIDTH } from "./Sidebar";
+
+import { useLocation, useNavigate } from "react-router-dom";
 
 interface TopbarProps {
     onMenuClick: () => void;
 }
 
+const getHeaderInfo = (pathname: string) => {
+    switch (pathname) {
+        case "/":
+            return { title: "Resumen del día", subtitle: "Control rápido de pedidos, producción y entregas" };
+        case "/clientes":
+            return { title: "Módulo de Clientes", subtitle: "Gestión de base de datos y segmentación" };
+        case "/productos":
+            return { title: "Catálogo de Productos", subtitle: "Administración de inventario y precios" };
+        case "/orders":
+            return { title: "Gestión de Pedidos", subtitle: "Control de ventas y facturación" };
+        default:
+            return { title: "Myos Panadería", subtitle: "Sistema Operativo" };
+    }
+};
+
 export default function Topbar({ onMenuClick }: TopbarProps) {
     const theme = useTheme();
     const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
+    const location = useLocation();
+    const navigate = useNavigate();
+    const { title, subtitle } = getHeaderInfo(location.pathname);
+
+    const getActionLabel = () => {
+        if (location.pathname === "/clientes") return "+ Nuevo cliente";
+        if (location.pathname === "/productos") return "+ Nuevo producto";
+        if (location.pathname === "/orders") return "+ Nuevo pedido";
+        return "+ Nuevo pedido";
+    };
+
+    const handleNewAction = () => {
+        if (location.pathname === "/") {
+            navigate("/orders"); // O abrir modal de pedido si existiera
+        } else {
+            // Re-navigates to same path but with openModal=true
+            // useEntityManagement listens to this
+            navigate({ pathname: location.pathname, search: "?openModal=true" });
+        }
+    };
 
     return (
         <AppBar
@@ -35,9 +69,10 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
                 borderBottom: "1px solid",
                 borderColor: "divider",
                 color: "text.primary",
+                zIndex: theme.zIndex.appBar,
             }}
         >
-            <Toolbar sx={{ gap: { xs: 1, sm: 2 } }}>
+            <Toolbar sx={{ gap: { xs: 1, sm: 2 }, py: 1 }}>
                 {/* Hamburger — only on mobile */}
                 {!isDesktop && (
                     <IconButton
@@ -50,68 +85,62 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
                     </IconButton>
                 )}
 
-                {/* Page title */}
+                {/* Page title area */}
                 <Box sx={{ flexGrow: 1, minWidth: 0 }}>
                     <Typography
-                        variant="h4"
-                        sx={{ fontWeight: 800, lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+                        variant="h5"
+                        sx={{ 
+                            fontWeight: 800, 
+                            lineHeight: 1.1, 
+                            whiteSpace: "nowrap", 
+                            overflow: "hidden", 
+                            textOverflow: "ellipsis",
+                            fontSize: { xs: "1.1rem", sm: "1.5rem" }
+                        }}
                     >
-                        Resumen del día
+                        {title}
                     </Typography>
                     {isDesktop && (
-                        <Typography variant="body1" color="text.secondary">
-                            Control rápido de pedidos, producción y entregas
+                        <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                            {subtitle}
                         </Typography>
                     )}
                 </Box>
 
-                {/* Search — hidden on xs */}
-                {isDesktop && (
-                    <TextField
-                        size="small"
-                        placeholder="Buscar pedido, cliente o producto..."
-                        sx={{ width: 280 }}
-                        slotProps={{
-                            input: {
-                                startAdornment: (
-                                    <InputAdornment position="start">
-                                        <SearchIcon fontSize="small" />
-                                    </InputAdornment>
-                                ),
-                            },
-                        }}
-                    />
-                )}
+                {/* Global actions area */}
+                <Box sx={{ flexGrow: 0, display: "flex", gap: 1.5 }}>
+                    {/* Export — hidden on Dashboard */}
+                    {isDesktop && location.pathname !== "/" && (
+                        <Button
+                            variant="outlined"
+                            size="small"
+                            startIcon={<FileDownloadOutlinedIcon />}
+                            sx={{ textTransform: "none", borderRadius: 2, whiteSpace: "nowrap", borderColor: "divider", color: "text.secondary" }}
+                        >
+                            Exportar
+                        </Button>
+                    )}
 
-                {/* Export — hidden on xs */}
-                {isDesktop && (
+                    {/* Main Action Button */}
                     <Button
-                        variant="outlined"
+                        variant="contained"
                         size="small"
-                        startIcon={<FileDownloadOutlinedIcon />}
-                        sx={{ textTransform: "none", borderRadius: 2, whiteSpace: "nowrap" }}
+                        startIcon={<AddIcon />}
+                        onClick={handleNewAction}
+                        sx={{
+                            textTransform: "none",
+                            borderRadius: 2,
+                            bgcolor: "#F59E0B",
+                            "&:hover": { bgcolor: "#D97706" },
+                            fontWeight: 700,
+                            whiteSpace: "nowrap",
+                            px: 2
+                        }}
                     >
-                        Exportar
+                        {getActionLabel()}
                     </Button>
-                )}
-
-                {/* New order */}
-                <Button
-                    variant="contained"
-                    size="small"
-                    startIcon={<AddIcon />}
-                    sx={{
-                        textTransform: "none",
-                        borderRadius: 2,
-                        bgcolor: "#F59E0B",
-                        "&:hover": { bgcolor: "#D97706" },
-                        fontWeight: 700,
-                        whiteSpace: "nowrap",
-                    }}
-                >
-                    {isDesktop ? "+ Nuevo pedido" : "Nuevo"}
-                </Button>
+                </Box>
             </Toolbar>
         </AppBar>
     );
-}
+}
