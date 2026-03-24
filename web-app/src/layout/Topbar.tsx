@@ -11,7 +11,9 @@ import {
 import MenuIcon from "@mui/icons-material/Menu";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import AddIcon from "@mui/icons-material/Add";
+import LogoutIcon from "@mui/icons-material/Logout";
 import { SIDEBAR_WIDTH } from "./Sidebar";
+import { useAuth } from "../hooks/useAuth.ts";
 
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -39,6 +41,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
     const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
     const location = useLocation();
     const navigate = useNavigate();
+    const { logout } = useAuth();
     const { title, subtitle } = getHeaderInfo(location.pathname);
 
     const getActionLabel = () => {
@@ -56,6 +59,11 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
             // useEntityManagement listens to this
             navigate({ pathname: location.pathname, search: "?openModal=true" });
         }
+    };
+
+    const handleLogout = () => {
+        logout();
+        navigate("/login", { replace: true });
     };
 
     return (
@@ -139,8 +147,25 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
                     >
                         {getActionLabel()}
                     </Button>
+
+                    <Button
+                        variant="text"
+                        size="small"
+                        startIcon={<LogoutIcon />}
+                        onClick={handleLogout}
+                        sx={{
+                            textTransform: "none",
+                            borderRadius: 2,
+                            color: "text.secondary",
+                            fontWeight: 700,
+                            whiteSpace: "nowrap",
+                            px: 1.5,
+                        }}
+                    >
+                        Salir
+                    </Button>
                 </Box>
             </Toolbar>
         </AppBar>
     );
-}
+}

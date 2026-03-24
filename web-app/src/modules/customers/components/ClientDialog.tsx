@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect} from "react";
 import {
     Dialog,
     DialogTitle,
@@ -29,6 +29,7 @@ const clientSchema = z.object({
 });
 
 type ClientFormData = z.infer<typeof clientSchema>;
+type ClientFormInput = z.input<typeof clientSchema>;
 
 const AVAILABLE_TAGS = ["Mayorista", "Minorista", "Frecuente", "Nuevo", "VIP", "Empresa"];
 
@@ -47,7 +48,7 @@ export default function ClientDialog({ open, onClose, client, onSave }: ClientDi
         handleSubmit,
         reset,
         formState: { errors },
-    } = useForm<ClientFormData>({
+    } = useForm<ClientFormInput, any, ClientFormData>({
         resolver: zodResolver(clientSchema),
         defaultValues: {
             name: "",
