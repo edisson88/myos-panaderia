@@ -32,8 +32,6 @@ const clientSchema = z.object({
 // z.output: types AFTER defaults are applied (active: boolean)
 type ClientFormInput = z.input<typeof clientSchema>;
 type ClientFormData = z.output<typeof clientSchema>;
-type ClientFormData = z.infer<typeof clientSchema>;
-type ClientFormInput = z.input<typeof clientSchema>;
 
 const AVAILABLE_TAGS = ["Mayorista", "Minorista", "Frecuente", "Nuevo", "VIP", "Empresa"];
 
@@ -52,7 +50,6 @@ export default function ClientDialog({ open, onClose, client, onSave }: ClientDi
         handleSubmit,
         reset,
         formState: { errors },
-    } = useForm<ClientFormInput, any, ClientFormData>({
     } = useForm<ClientFormInput, any, ClientFormData>({
         resolver: zodResolver(clientSchema),
         defaultValues: {
