@@ -29,8 +29,12 @@ const getHeaderInfo = (pathname: string) => {
             return { title: "Módulo de Clientes", subtitle: "Gestión de base de datos y segmentación" };
         case "/productos":
             return { title: "Catálogo de Productos", subtitle: "Administración de inventario y precios" };
-        case "/orders":
+        case "/pedidos":
             return { title: "Gestión de Pedidos", subtitle: "Control de ventas y facturación" };
+        case "/produccion":
+            return { title: "Módulo de Producción", subtitle: "Lotes, procesos y control de calidad" };
+        case "/analitica":
+            return { title: "Analítica · Cuadro de Mando Integral", subtitle: "Perspectivas estratégicas: Financiera, Clientes, Procesos y Aprendizaje" };
         default:
             return { title: "Myos Panadería", subtitle: "Sistema Operativo" };
     }
