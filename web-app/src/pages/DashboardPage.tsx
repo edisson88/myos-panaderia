@@ -343,25 +343,66 @@ export default function DashboardPage() {
                     </Card>
                 </Grid>
 
-                {/* Cuadro 3 – Producción vs Desperdicio */}
+                {/* Cuadro 3 – Pedidos recientes */}
                 <Grid size={{ xs: 12, md: 4 }}>
                     <Card sx={panel}>
                         <CardContent sx={{ p: 2.5, pb: "20px !important" }}>
-                            <Typography variant="caption" sx={{ color: "#605e5c", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", mb: 2 }}>
-                                Producción vs Desperdicio
-                            </Typography>
-                            <Box sx={{ height: 240 }}>
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={categoryData} layout="vertical" margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
-                                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e1dfdd" />
-                                        <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#605e5c" }} />
-                                        <YAxis dataKey="category" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#323130" }} width={78} />
-                                        <RechartsTooltip />
-                                        <Legend iconType="square" wrapperStyle={{ fontSize: 12 }} />
-                                        <Bar dataKey="cantidad" name="Producido" stackId="a" fill="#118dff" barSize={14} />
-                                        <Bar dataKey="desperdicio" name="Desperdicio" stackId="a" fill="#d13438" barSize={14} />
-                                    </BarChart>
-                                </ResponsiveContainer>
+                            <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1.5}>
+                                <Typography variant="caption" sx={{ color: "#323130", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                                    Pedidos Recientes
+                                </Typography>
+                                <Typography variant="caption" sx={{ color: "#0078d4", cursor: "pointer", fontWeight: 600 }}>
+                                    Ver todo →
+                                </Typography>
+                            </Stack>
+                            <Divider sx={{ mb: 1.5, borderColor: "#e1dfdd" }} />
+                            <Box sx={{ overflowX: "auto" }}>
+                                <Table size="small" sx={{ "& .MuiTableCell-root": { borderBottom: "1px solid #f3f2f1", py: 1.2, px: 1, fontSize: "0.8rem", color: "#323130" } }}>
+                                    <TableHead>
+                                        <TableRow sx={{ bgcolor: "#faf9f8" }}>
+                                            <TableCell><Typography variant="caption" fontWeight={700} color="#605e5c" sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>Hora</Typography></TableCell>
+                                            <TableCell><Typography variant="caption" fontWeight={700} color="#605e5c" sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>Cliente</Typography></TableCell>
+                                            <TableCell align="right"><Typography variant="caption" fontWeight={700} color="#605e5c" sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>Total</Typography></TableCell>
+                                        </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                        {recentOrders.map((order, idx) => (
+                                            <Tooltip key={idx} title="Ver detalle y exportar PDF" placement="left" arrow>
+                                                <TableRow
+                                                    onClick={() => setSelectedOrder(order)}
+                                                    sx={{
+                                                        cursor: "pointer",
+                                                        transition: "background 0.15s",
+                                                        "&:hover": {
+                                                            bgcolor: "#f0f4ff",
+                                                            "& .row-action-icon": { opacity: 1 },
+                                                        },
+                                                    }}
+                                                >
+                                                    <TableCell sx={{ color: "#605e5c", whiteSpace: "nowrap", fontSize: "0.75rem" }}>
+                                                        {order.date.split(" · ")[0]}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Box>
+                                                            <Stack direction="row" alignItems="center" spacing={0.5}>
+                                                                <Typography variant="caption" sx={{ fontWeight: 600 }}>{order.customer}</Typography>
+                                                                <OpenInNewIcon className="row-action-icon" sx={{ fontSize: 11, color: "#0078d4", opacity: 0, transition: "opacity 0.15s" }} />
+                                                            </Stack>
+                                                            <Chip
+                                                                label={order.status}
+                                                                size="small"
+                                                                sx={{ height: 16, fontSize: "0.6rem", fontWeight: 700, color: statusColor[order.status] ?? "#605e5c", bgcolor: `${statusColor[order.status] ?? "#605e5c"}15` }}
+                                                            />
+                                                        </Box>
+                                                    </TableCell>
+                                                    <TableCell align="right" sx={{ fontWeight: 700, whiteSpace: "nowrap" }}>
+                                                        $ {order.total.toLocaleString("es-CO")}
+                                                    </TableCell>
+                                                </TableRow>
+                                            </Tooltip>
+                                        ))}
+                                    </TableBody>
+                                </Table>
                             </Box>
                         </CardContent>
                     </Card>
@@ -452,66 +493,25 @@ export default function DashboardPage() {
                     </Card>
                 </Grid>
 
-                {/* Cuadro 5b – Pedidos recientes */}
+                {/* Cuadro 5b – Producción vs Desperdicio */}
                 <Grid size={{ xs: 12, md: 4 }}>
                     <Card sx={panel}>
                         <CardContent sx={{ p: 2.5, pb: "20px !important" }}>
-                            <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1.5}>
-                                <Typography variant="caption" sx={{ color: "#323130", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                                    Pedidos Recientes
-                                </Typography>
-                                <Typography variant="caption" sx={{ color: "#0078d4", cursor: "pointer", fontWeight: 600 }}>
-                                    Ver todo →
-                                </Typography>
-                            </Stack>
-                            <Divider sx={{ mb: 1.5, borderColor: "#e1dfdd" }} />
-                            <Box sx={{ overflowX: "auto" }}>
-                                <Table size="small" sx={{ "& .MuiTableCell-root": { borderBottom: "1px solid #f3f2f1", py: 1.2, px: 1, fontSize: "0.8rem", color: "#323130" } }}>
-                                    <TableHead>
-                                        <TableRow sx={{ bgcolor: "#faf9f8" }}>
-                                            <TableCell><Typography variant="caption" fontWeight={700} color="#605e5c" sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>Hora</Typography></TableCell>
-                                            <TableCell><Typography variant="caption" fontWeight={700} color="#605e5c" sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>Cliente</Typography></TableCell>
-                                            <TableCell align="right"><Typography variant="caption" fontWeight={700} color="#605e5c" sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>Total</Typography></TableCell>
-                                        </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                        {recentOrders.map((order, idx) => (
-                                            <Tooltip key={idx} title="Ver detalle y exportar PDF" placement="left" arrow>
-                                                <TableRow
-                                                    onClick={() => setSelectedOrder(order)}
-                                                    sx={{
-                                                        cursor: "pointer",
-                                                        transition: "background 0.15s",
-                                                        "&:hover": {
-                                                            bgcolor: "#f0f4ff",
-                                                            "& .row-action-icon": { opacity: 1 },
-                                                        },
-                                                    }}
-                                                >
-                                                    <TableCell sx={{ color: "#605e5c", whiteSpace: "nowrap", fontSize: "0.75rem" }}>
-                                                        {order.date.split(" · ")[0]}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <Box>
-                                                            <Stack direction="row" alignItems="center" spacing={0.5}>
-                                                                <Typography variant="caption" sx={{ fontWeight: 600 }}>{order.customer}</Typography>
-                                                                <OpenInNewIcon className="row-action-icon" sx={{ fontSize: 11, color: "#0078d4", opacity: 0, transition: "opacity 0.15s" }} />
-                                                            </Stack>
-                                                            <Chip
-                                                                label={order.status}
-                                                                size="small"
-                                                                sx={{ height: 16, fontSize: "0.6rem", fontWeight: 700, color: statusColor[order.status] ?? "#605e5c", bgcolor: `${statusColor[order.status] ?? "#605e5c"}15` }}
-                                                            />
-                                                        </Box>
-                                                    </TableCell>
-                                                    <TableCell align="right" sx={{ fontWeight: 700, whiteSpace: "nowrap" }}>
-                                                        $ {order.total.toLocaleString("es-CO")}
-                                                    </TableCell>
-                                                </TableRow>
-                                            </Tooltip>
-                                        ))}
-                                    </TableBody>
-                                </Table>
+                            <Typography variant="caption" sx={{ color: "#605e5c", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", mb: 2 }}>
+                                Producción vs Desperdicio
+                            </Typography>
+                            <Box sx={{ height: 240 }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={categoryData} layout="vertical" margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
+                                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e1dfdd" />
+                                        <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#605e5c" }} />
+                                        <YAxis dataKey="category" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#323130" }} width={78} />
+                                        <RechartsTooltip />
+                                        <Legend iconType="square" wrapperStyle={{ fontSize: 12 }} />
+                                        <Bar dataKey="cantidad" name="Producido" stackId="a" fill="#118dff" barSize={14} />
+                                        <Bar dataKey="desperdicio" name="Desperdicio" stackId="a" fill="#d13438" barSize={14} />
+                                    </BarChart>
+                                </ResponsiveContainer>
                             </Box>
                         </CardContent>
                     </Card>
