@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Box,
   Card,
   CardContent,
   Chip,
+  CircularProgress,
   InputAdornment,
   Stack,
   Table,
@@ -18,45 +19,108 @@ import {
   IconButton,
   Button,
   Tooltip,
+  Alert,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
-import type { Product } from "../modules/products/products.schema";
-// import ProductDialog from "../modules/products/components/ProductDialog";
-// import ConfirmDialog from "../components/ConfirmDialog";
-
-const dummyProducts: Product[] = [
-  {
-    id: "1",
-    name: "Pan Campesino Grande",
-    description: "Pan artesanal de 500g con masa madre y corteza crujiente.",
-    unit_price: 12500,
-    active: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: "2",
-    name: "Croissant de Almendras",
-    description: "Masa hojaldrada rellena de crema de almendras tostadas.",
-    unit_price: 8500,
-    active: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-];
+import type { Product, CreateProductInput } from "../modules/products/products.schema";
+import {
+  getProducts,
+  createProduct,
+  updateProduct,
+  deleteProduct,
+} from "../modules/products/products.service";
+import ProductDialog from "../modules/products/components/ProductDialog";
+import ConfirmDialog from "../components/ConfirmDialog";
+import { useAuth } from "../hooks/useAuth";
 
 export default function ProductsPage() {
+  const { token } = useAuth();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
 
-  const filteredProducts = dummyProducts.filter(
+  // Dialog states
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | undefined>(undefined);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+
+  const loadProducts = async () => {
+    if (!token) return;
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await getProducts(token);
+      setProducts(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al cargar productos");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadProducts();
+  }, [token]);
+
+  const handleOpenCreate = () => {
+    setSelectedProduct(undefined);
+    setDialogOpen(true);
+  };
+
+  const handleOpenEdit = (product: Product) => {
+    setSelectedProduct(product);
+    setDialogOpen(true);
+  };
+
+  const handleOpenDelete = (product: Product) => {
+    setProductToDelete(product);
+    setConfirmOpen(true);
+  };
+
+  const handleSave = async (data: CreateProductInput) => {
+    if (!token) return;
+    try {
+      if (selectedProduct?.id) {
+        const updated = await updateProduct(selectedProduct.id, data, token);
+        setProducts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+      } else {
+        const created = await createProduct(data, token);
+        setProducts((prev) => [...prev, created]);
+      }
+      setDialogOpen(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al guardar producto");
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!token || !productToDelete?.id) return;
+    try {
+      await deleteProduct(productToDelete.id, token);
+      setProducts((prev) => prev.filter((p) => p.id !== productToDelete.id));
+      setConfirmOpen(false);
+      setProductToDelete(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al eliminar producto");
+    }
+  };
+
+  const filteredProducts = products.filter(
     (p) =>
       p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.description?.toLowerCase().includes(search.toLowerCase())
+      p.description?.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  const paginatedProducts = filteredProducts.slice(
+    page * rowsPerPage,
+    page * rowsPerPage + rowsPerPage,
   );
 
   return (
@@ -68,6 +132,7 @@ export default function ProductsPage() {
         <Button
           variant="contained"
           startIcon={<AddIcon />}
+          onClick={handleOpenCreate}
           sx={{
             borderRadius: 3,
             textTransform: "none",
@@ -80,6 +145,12 @@ export default function ProductsPage() {
         </Button>
       </Stack>
 
+      {error && (
+        <Alert severity="error" onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
+
       <Card sx={{ borderRadius: 3, boxShadow: "0 8px 24px rgba(149,157,165,0.1)" }}>
         <CardContent sx={{ p: 2, paddingBottom: "16px !important" }}>
           <TextField
@@ -87,7 +158,10 @@ export default function ProductsPage() {
             size="small"
             placeholder="Buscar producto por nombre o descripción..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(0);
+            }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -116,49 +190,69 @@ export default function ProductsPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredProducts.map((product) => (
-              <TableRow key={product.id} hover sx={{ transition: "0.2s", "&:hover": { bgcolor: "rgba(0,0,0,0.01)" } }}>
-                <TableCell>
-                  <Typography variant="body1" sx={{ fontWeight: 600 }}>{product.name}</Typography>
-                  <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block', maxWidth: 300 }}>
-                    {product.description || "Sin descripción"}
-                  </Typography>
-                </TableCell>
-                <TableCell>
-                  <Typography sx={{ fontWeight: 700, color: "primary.main" }}>
-                    $ {product.unit_price.toLocaleString("es-CO")}
-                  </Typography>
-                </TableCell>
-                <TableCell>
-                  <Chip
-                    label={product.active ? "Activo" : "Inactivo"}
-                    color={product.active ? "success" : "default"}
-                    size="small"
-                    sx={{ fontWeight: 700, borderRadius: 1.5 }}
-                  />
-                </TableCell>
-                <TableCell align="right">
-                  <Stack direction="row" spacing={1} justifyContent="flex-end">
-                    <Tooltip title="Editar">
-                      <IconButton size="small">
-                        <EditIcon fontSize="small" color="primary" />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Eliminar">
-                      <IconButton size="small">
-                        <DeleteIcon fontSize="small" color="error" />
-                      </IconButton>
-                    </Tooltip>
-                  </Stack>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={4} align="center" sx={{ py: 4 }}>
+                  <CircularProgress size={32} />
                 </TableCell>
               </TableRow>
-            ))}
-            {filteredProducts.length === 0 && (
+            ) : paginatedProducts.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={4} align="center" sx={{ py: 3 }}>
-                  <Typography variant="body1" color="text.secondary">No se encontraron productos.</Typography>
+                  <Typography variant="body1" color="text.secondary">
+                    No se encontraron productos.
+                  </Typography>
                 </TableCell>
               </TableRow>
+            ) : (
+              paginatedProducts.map((product) => (
+                <TableRow
+                  key={product.id}
+                  hover
+                  sx={{ transition: "0.2s", "&:hover": { bgcolor: "rgba(0,0,0,0.01)" } }}
+                >
+                  <TableCell>
+                    <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                      {product.name}
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      noWrap
+                      sx={{ display: "block", maxWidth: 300 }}
+                    >
+                      {product.description || "Sin descripción"}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography sx={{ fontWeight: 700, color: "primary.main" }}>
+                      $ {product.unit_price.toLocaleString("es-CO")}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      label={product.active ? "Activo" : "Inactivo"}
+                      color={product.active ? "success" : "default"}
+                      size="small"
+                      sx={{ fontWeight: 700, borderRadius: 1.5 }}
+                    />
+                  </TableCell>
+                  <TableCell align="right">
+                    <Stack direction="row" spacing={1} justifyContent="flex-end">
+                      <Tooltip title="Editar">
+                        <IconButton size="small" onClick={() => handleOpenEdit(product)}>
+                          <EditIcon fontSize="small" color="primary" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Eliminar">
+                        <IconButton size="small" onClick={() => handleOpenDelete(product)}>
+                          <DeleteIcon fontSize="small" color="error" />
+                        </IconButton>
+                      </Tooltip>
+                    </Stack>
+                  </TableCell>
+                </TableRow>
+              ))
             )}
           </TableBody>
         </Table>
@@ -176,7 +270,23 @@ export default function ProductsPage() {
         />
       </TableContainer>
 
-      {/* Aquí iría el ProductDialog interconectado con la API más adelante */}
+      <ProductDialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        product={selectedProduct}
+        onSave={handleSave}
+      />
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Eliminar producto"
+        message={`¿Estás seguro que deseas eliminar "${productToDelete?.name}"? Esta acción no se puede deshacer.`}
+        onClose={() => {
+          setConfirmOpen(false);
+          setProductToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+      />
     </Box>
   );
 }

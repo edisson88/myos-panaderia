@@ -7,7 +7,7 @@ import Topbar from "./Topbar";
 export default function AppLayout() {
     const [mobileOpen, setMobileOpen] = useState(false);
     const location = useLocation();
-    const hideTopbar = location.pathname === "/clientes";
+    const hideTopbar = ["/clientes", "/productos"].includes(location.pathname);
 
     const handleDrawerToggle = () => setMobileOpen((prev) => !prev);
 
