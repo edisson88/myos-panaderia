@@ -133,15 +133,6 @@ export default function OrdersPage() {
 
     return (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <Box>
-                <Typography variant="h2" sx={{ fontWeight: 900 }}>
-                    Pedidos
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                    Historial de pedidos, métricas principales y detalle por productos
-                </Typography>
-            </Box>
-
             <OrdersFilters value={filters} onChange={setFilters} onApply={handleApply} onClear={handleClear} />
 
             <OrdersKpis kpis={kpisMock} />

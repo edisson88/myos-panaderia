@@ -134,11 +134,11 @@ export default function ProductsPage() {
           startIcon={<AddIcon />}
           onClick={handleOpenCreate}
           sx={{
-            borderRadius: 3,
+            borderRadius: 2,
             textTransform: "none",
             fontWeight: 700,
             px: 3,
-            boxShadow: "0 4px 14px 0 rgba(0,0,0,0.1)",
+            boxShadow: "none",
           }}
         >
           Nuevo Producto
@@ -151,7 +151,7 @@ export default function ProductsPage() {
         </Alert>
       )}
 
-      <Card sx={{ borderRadius: 3, boxShadow: "0 8px 24px rgba(149,157,165,0.1)" }}>
+      <Card sx={{ borderRadius: 0, boxShadow: "none", border: "1px solid #e1dfdd" }}>
         <CardContent sx={{ p: 2, paddingBottom: "16px !important" }}>
           <TextField
             fullWidth
@@ -171,17 +171,17 @@ export default function ProductsPage() {
             }}
             sx={{
               "& .MuiOutlinedInput-root": {
-                borderRadius: 2.5,
-                bgcolor: "background.default",
+                borderRadius: 0,
+                bgcolor: "white",
               },
             }}
           />
         </CardContent>
       </Card>
 
-      <TableContainer component={Card} sx={{ borderRadius: 3, boxShadow: "0 8px 30px rgba(0,0,0,0.04)" }}>
-        <Table sx={{ minWidth: 650 }}>
-          <TableHead sx={{ bgcolor: "background.default" }}>
+      <TableContainer component={Card} sx={{ borderRadius: 0, boxShadow: "none", border: "1px solid #e1dfdd" }}>
+        <Table sx={{ minWidth: 650, "& .MuiTableCell-root": { py: 1.5 } }}>
+          <TableHead sx={{ bgcolor: "#faf9f8", borderBottom: "1px solid #e1dfdd" }}>
             <TableRow>
               <TableCell><Typography variant="subtitle2" fontWeight={700}>Producto</Typography></TableCell>
               <TableCell><Typography variant="subtitle2" fontWeight={700}>Precio (COP)</Typography></TableCell>
@@ -234,7 +234,7 @@ export default function ProductsPage() {
                       label={product.active ? "Activo" : "Inactivo"}
                       color={product.active ? "success" : "default"}
                       size="small"
-                      sx={{ fontWeight: 700, borderRadius: 1.5 }}
+                      sx={{ fontWeight: 700, borderRadius: 0 }}
                     />
                   </TableCell>
                   <TableCell align="right">

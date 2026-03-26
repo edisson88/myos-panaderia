@@ -10,8 +10,8 @@ export default function OrdersKpis({ kpis }: Props) {
         <Grid container spacing={2}>
             {kpis.map((kpi) => (
                 <Grid size={{ xs: 12, md: 6, lg: 3 }} key={kpi.label}>
-                    <Card>
-                        <CardContent>
+                    <Card sx={{ borderRadius: 0, boxShadow: "none", border: "1px solid #e1dfdd" }}>
+                        <CardContent sx={{ p: 2.5 }}>
                             <Stack direction="row" justifyContent="space-between" alignItems="flex-start" gap={1}>
                                 <Box>
                                     <Typography variant="body2" color="text.secondary">
@@ -29,6 +29,7 @@ export default function OrdersKpis({ kpis }: Props) {
                                         color={kpi.chipColor ?? "default"}
                                         variant="outlined"
                                         size="small"
+                                        sx={{ borderRadius: 0, fontWeight: 700, fontSize: "0.65rem" }}
                                     />
                                 ) : null}
                             </Stack>
