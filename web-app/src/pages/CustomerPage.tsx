@@ -222,7 +222,7 @@ export default function ClientsPage() {
 
             {error && <Alert severity="error">{error}</Alert>}
 
-            <Card sx={{ borderRadius: 3 }}>
+            <Card sx={{ borderRadius: 0, boxShadow: "none", border: "1px solid #e1dfdd" }}>
                 <CardContent sx={{ py: 2, "&:last-child": { pb: 2 }, display: "flex", gap: 2 }}>
                     <TextField
                         fullWidth size="small"
@@ -236,22 +236,31 @@ export default function ClientsPage() {
                                 </InputAdornment>
                             ),
                         }}
-                        sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2.5, bgcolor: "rgba(0,0,0,0.02)" } }}
+                        sx={{ "& .MuiOutlinedInput-root": { borderRadius: 0, bgcolor: "white" } }}
                     />
                     <Button
                         variant="contained"
                         startIcon={<AddIcon />}
                         onClick={handleOpenCreate}
-                        sx={{ borderRadius: 2, px: 2.5, whiteSpace: "nowrap" }}
+                        sx={{
+                            borderRadius: 0,
+                            bgcolor: "#6B3A2A",
+                            px: 2.5,
+                            whiteSpace: "nowrap",
+                            textTransform: "none",
+                            fontWeight: 700,
+                            boxShadow: "none",
+                            "&:hover": { bgcolor: "#8b4f3d" }
+                        }}
                     >
                         Nuevo cliente
                     </Button>
                 </CardContent>
             </Card>
 
-            <TableContainer component={Card} sx={{ borderRadius: 3 }}>
-                <Table sx={{ minWidth: 650 }}>
-                    <TableHead sx={{ bgcolor: "rgba(0,0,0,0.02)" }}>
+            <TableContainer component={Card} sx={{ borderRadius: 0, boxShadow: "none", border: "1px solid #e1dfdd" }}>
+                <Table sx={{ minWidth: 650, "& .MuiTableCell-root": { py: 1.5 } }}>
+                    <TableHead sx={{ bgcolor: "#faf9f8" }}>
                         <TableRow>
                             <TableCell>
                                 <TableSortLabel
@@ -275,7 +284,7 @@ export default function ClientsPage() {
                                     Estado
                                 </TableSortLabel>
                             </TableCell>
-                            <TableCell align="right" sx={{ fontWeight: 700 }}>Acciones</TableCell>
+                            <TableCell align="right"><Typography variant="caption" sx={{ fontWeight: 700, color: "#605e5c", textTransform: "uppercase", letterSpacing: "0.05em" }}>Acciones</Typography></TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
@@ -311,7 +320,7 @@ export default function ClientsPage() {
                                         <Chip
                                             label={client.label}
                                             size="small"
-                                            sx={{ fontSize: "0.7rem", fontWeight: 700, borderRadius: 1 }}
+                                            sx={{ fontSize: "0.7rem", fontWeight: 700, borderRadius: 0 }}
                                         />
                                     ) : (
                                         <Typography variant="caption" color="text.disabled">Sin etiqueta</Typography>
@@ -322,11 +331,11 @@ export default function ClientsPage() {
                                     <Typography variant="caption" color="text.secondary">{client.address}</Typography>
                                 </TableCell>
                                 <TableCell>
-                                    <Chip 
-                                        label={client.active ? "Activo" : "Inactivo"} 
-                                        color={client.active ? "success" : "default"} 
+                                    <Chip
+                                        label={client.active ? "Activo" : "Inactivo"}
+                                        color={client.active ? "success" : "default"}
                                         variant={client.active ? "filled" : "outlined"}
-                                        size="small" sx={{ fontWeight: 700, borderRadius: 1 }}
+                                        size="small" sx={{ fontWeight: 700, borderRadius: 0 }}
                                     />
                                 </TableCell>
                                 <TableCell align="right">
@@ -369,16 +378,16 @@ export default function ClientsPage() {
             <ClientDialog
                 open={isDialogOpen}
                 onClose={handleCloseDialog}
-                                client={editingCustomer ?? undefined}
-                                onSave={handleSaveCustomer}
+                client={editingCustomer ?? undefined}
+                onSave={handleSaveCustomer}
             />
 
             <ConfirmDialog
-                                open={deleteDialog.open}
-                                title="Eliminar cliente"
-                                message={`¿Seguro que deseas eliminar a ${deleteDialog.name}?`}
-                                onClose={() => setDeleteDialog({ open: false, id: null, name: "" })}
-                                onConfirm={handleConfirmDelete}
+                open={deleteDialog.open}
+                title="Eliminar cliente"
+                message={`¿Seguro que deseas eliminar a ${deleteDialog.name}?`}
+                onClose={() => setDeleteDialog({ open: false, id: null, name: "" })}
+                onConfirm={handleConfirmDelete}
             />
         </Box>
     );

@@ -65,7 +65,11 @@ export default function OrderDetailDrawer({ open, onClose, order }: Props) {
                         </Typography>
                     </Box>
 
-                    <Button variant="outlined" onClick={onClose}>
+                    <Button 
+                        variant="outlined" 
+                        onClick={onClose}
+                        sx={{ borderRadius: 0, textTransform: "none", fontWeight: 700, borderColor: "#e1dfdd", color: "#323130" }}
+                    >
                         Cerrar
                     </Button>
                 </Stack>
@@ -76,9 +80,9 @@ export default function OrderDetailDrawer({ open, onClose, order }: Props) {
                     <Box
                         sx={{
                             p: 3,
-                            borderRadius: 3,
-                            border: (theme) => `1px dashed ${theme.palette.divider}`,
-                            bgcolor: "background.paper",
+                            borderRadius: 0,
+                            border: "1px dashed #e1dfdd",
+                            bgcolor: "#faf9f8",
                         }}
                     >
                         <Typography sx={{ fontWeight: 700 }}>No hay pedido seleccionado</Typography>
@@ -95,19 +99,30 @@ export default function OrderDetailDrawer({ open, onClose, order }: Props) {
                                 color={getStatusChipColor(order.status)}
                                 variant="outlined"
                                 size="small"
+                                sx={{ borderRadius: 0, fontWeight: 700, fontSize: "0.65rem" }}
                             />
                             {order.deliveryDate ? (
-                                <Chip label={`Entrega: ${order.deliveryDate}`} variant="outlined" size="small" />
+                                <Chip 
+                                    label={`Entrega: ${order.deliveryDate}`} 
+                                    variant="outlined" 
+                                    size="small" 
+                                    sx={{ borderRadius: 0, fontWeight: 700, fontSize: "0.65rem" }}
+                                />
                             ) : null}
-                            <Chip label={`Pedido: ${order.orderDate}`} variant="outlined" size="small" />
+                            <Chip 
+                                label={`Pedido: ${order.orderDate}`} 
+                                variant="outlined" 
+                                size="small" 
+                                sx={{ borderRadius: 0, fontWeight: 700, fontSize: "0.65rem" }}
+                            />
                         </Stack>
 
                         <Box
                             sx={{
                                 p: 2,
-                                borderRadius: 3,
-                                border: (theme) => `1px solid ${theme.palette.divider}`,
-                                bgcolor: "background.paper",
+                                borderRadius: 0,
+                                border: "1px solid #e1dfdd",
+                                bgcolor: "#faf9f8",
                             }}
                         >
                             <Stack spacing={0.75}>
@@ -142,8 +157,8 @@ export default function OrderDetailDrawer({ open, onClose, order }: Props) {
 
                             <Box sx={{ overflowX: "auto" }}>
                                 <Table size="small">
-                                    <TableHead>
-                                        <TableRow>
+                                    <TableHead sx={{ bgcolor: "#faf9f8" }}>
+                                        <TableRow sx={{ "& .MuiTableCell-root": { fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase" } }}>
                                             <TableCell>Producto</TableCell>
                                             <TableCell>Unidades</TableCell>
                                             <TableCell>Valor unitario</TableCell>
@@ -167,8 +182,16 @@ export default function OrderDetailDrawer({ open, onClose, order }: Props) {
 
                         {/* Footer actions (placeholder) */}
                         <Stack direction="row" spacing={1} justifyContent="flex-end">
-                            <Button variant="outlined">Descargar PDF</Button>
-                            <Button variant="contained" color="warning">
+                            <Button 
+                                variant="outlined"
+                                sx={{ borderRadius: 0, textTransform: "none", fontWeight: 700, borderColor: "#e1dfdd", color: "#323130" }}
+                            >
+                                Descargar PDF
+                            </Button>
+                            <Button 
+                                variant="contained" 
+                                sx={{ borderRadius: 0, bgcolor: "#6B3A2A", textTransform: "none", fontWeight: 700, boxShadow: "none", "&:hover": { bgcolor: "#8b4f3d" } }}
+                            >
                                 Editar pedido
                             </Button>
                         </Stack>

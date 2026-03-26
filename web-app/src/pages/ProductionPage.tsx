@@ -1,4 +1,5 @@
-import { useState, Fragment } from "react";
+import { useState, Fragment, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import {
   Box,
   Card,
@@ -26,10 +27,12 @@ import AddIcon from "@mui/icons-material/Add";
 import RocketLaunchIcon from "@mui/icons-material/RocketLaunch";
 import CancelIcon from "@mui/icons-material/Cancel";
 import DoneAllIcon from "@mui/icons-material/DoneAll";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import { motion, AnimatePresence } from "framer-motion";
 
 import type { ProductionOrder } from "../modules/production/production.schema";
 
-const dummyProduction: ProductionOrder[] = [
+const INITIAL_PRODUCTION: ProductionOrder[] = [
   {
     id: "prod-001",
     date: new Date().toISOString(),
@@ -53,11 +56,10 @@ const dummyProduction: ProductionOrder[] = [
   },
 ];
 
-const Row = ({ order }: { order: ProductionOrder }) => {
+const Row = ({ order, onAdvance }: { order: ProductionOrder; onAdvance: (id: string) => void }) => {
   const [open, setOpen] = useState(false);
 
-  // Status Chip Info
-  const statusConfig: Record<string, { label: string; color: "default" | "primary" | "success" | "warning" | "error" | "info" }> = {
+  const statusConfig: Record<string, { label: string; color: any }> = {
     draft: { label: "Borrador", color: "default" },
     in_progress: { label: "En Progreso", color: "warning" },
     completed: { label: "Completada", color: "success" },
@@ -82,15 +84,60 @@ const Row = ({ order }: { order: ProductionOrder }) => {
           <Typography fontWeight={700} color="primary.main">{order.items.length} ítems</Typography>
         </TableCell>
         <TableCell>
-          <Chip
-            size="small"
-            label={getStatus(order.status).label}
-            color={getStatus(order.status).color}
-            sx={{ fontWeight: 700, borderRadius: 1.5 }}
-          />
+          <Box sx={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={order.status}
+                initial={{ opacity: 0, scale: 0.8, y: 5 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 1.2, y: -5 }}
+                transition={{ duration: 0.3 }}
+              >
+                <Chip
+                  size="small"
+                  label={getStatus(order.status).label}
+                  color={getStatus(order.status).color}
+                  icon={order.status === 'completed' ? <CheckCircleIcon /> : undefined}
+                  sx={{ 
+                    fontWeight: 700, 
+                    borderRadius: 0,
+                    transition: 'all 0.4s ease-in-out',
+                    ...(order.status === 'completed' && {
+                      bgcolor: '#dff6dd',
+                      color: '#107c10',
+                      '& .MuiChip-icon': { color: '#107c10' }
+                    })
+                  }}
+                />
+              </motion.div>
+            </AnimatePresence>
+            
+            {/* Pequeño destello de celebración al completar */}
+            {order.status === 'completed' && (
+              <motion.div
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: [1, 1.5, 0], opacity: [0, 0.8, 0] }}
+                transition={{ duration: 0.8, times: [0, 0.5, 1] }}
+                style={{
+                  position: 'absolute',
+                  width: '100%',
+                  height: '100%',
+                  borderRadius: '50%',
+                  background: 'radial-gradient(circle, #107c10 0%, transparent 70%)',
+                  zIndex: -1
+                }}
+              />
+            )}
+          </Box>
         </TableCell>
         <TableCell align="right">
-          <IconButton size="small" color="primary" title="Avanzar Estado" disabled={order.status === 'completed' || order.status === 'cancelled'}>
+          <IconButton 
+            size="small" 
+            color="primary" 
+            title="Avanzar Estado" 
+            onClick={() => onAdvance(order.id)}
+            disabled={order.status === 'completed' || order.status === 'cancelled'}
+          >
             <RocketLaunchIcon fontSize="small" />
           </IconButton>
           <IconButton size="small" color="error" title="Cancelar" disabled={order.status === 'completed' || order.status === 'cancelled'}>
@@ -101,9 +148,9 @@ const Row = ({ order }: { order: ProductionOrder }) => {
       <TableRow>
         <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
           <Collapse in={open} timeout="auto" unmountOnExit>
-            <Box sx={{ margin: 1, p: 2, bgcolor: "rgba(0,0,0,0.02)", borderRadius: 2 }}>
+            <Box sx={{ margin: 1, p: 2, bgcolor: "#faf9f8", border: "1px solid #e1dfdd", borderRadius: 0 }}>
               <Typography variant="subtitle2" gutterBottom component="div" fontWeight={700} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                Detalles del Lote <DoneAllIcon fontSize="small" color="action"/>
+                Detalles del Lote <DoneAllIcon fontSize="small" color="action" />
               </Typography>
               <Table size="small" aria-label="purchases">
                 <TableHead>
@@ -142,36 +189,36 @@ const Row = ({ order }: { order: ProductionOrder }) => {
 };
 
 export default function ProductionPage() {
+  const location = useLocation();
+  const [orders, setOrders] = useState<ProductionOrder[]>(INITIAL_PRODUCTION);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
 
-  const filteredOrders = dummyProduction.filter(
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const searchParam = params.get("search");
+    if (searchParam) {
+      setSearch(searchParam);
+    }
+  }, [location.search]);
+
+  const handleAdvanceStatus = (id: string) => {
+    setOrders(prev => prev.map(order => 
+      order.id === id 
+        ? { ...order, status: order.status === 'draft' ? 'in_progress' : 'completed' } as ProductionOrder
+        : order
+    ));
+  };
+
+  const filteredOrders = orders.filter(
     (order) => order.notes?.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 3, p: 3 }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center">
-        <Typography variant="h4" sx={{ fontWeight: 800, fontFamily: "Inter, sans-serif" }}>
-          Control de Producción
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          sx={{
-            borderRadius: 3,
-            textTransform: "none",
-            fontWeight: 700,
-            px: 3,
-            boxShadow: "0 4px 14px 0 rgba(0,0,0,0.1)",
-          }}
-        >
-          Nueva Orden de Producción
-        </Button>
-      </Stack>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
 
-      <Card sx={{ borderRadius: 3, boxShadow: "0 8px 24px rgba(149,157,165,0.1)" }}>
+      <Card sx={{ borderRadius: 0, boxShadow: "none", border: "1px solid #e1dfdd" }}>
         <CardContent sx={{ p: 2, paddingBottom: "16px !important" }}>
           <TextField
             fullWidth
@@ -188,17 +235,18 @@ export default function ProductionPage() {
             }}
             sx={{
               "& .MuiOutlinedInput-root": {
-                borderRadius: 2.5,
-                bgcolor: "background.default",
+                borderRadius: 0,
+                bgcolor: "white",
+                fontSize: "0.85rem",
               },
             }}
           />
         </CardContent>
       </Card>
 
-      <TableContainer component={Card} sx={{ borderRadius: 3, boxShadow: "0 8px 30px rgba(0,0,0,0.04)" }}>
-        <Table aria-label="collapsible table" sx={{ minWidth: 650 }}>
-          <TableHead sx={{ bgcolor: "background.default" }}>
+      <TableContainer component={Card} sx={{ borderRadius: 0, boxShadow: "none", border: "1px solid #e1dfdd" }}>
+        <Table aria-label="collapsible table" sx={{ minWidth: 650, "& .MuiTableCell-root": { py: 1.5 } }}>
+          <TableHead sx={{ bgcolor: "#faf9f8" }}>
             <TableRow>
               <TableCell />
               <TableCell><Typography variant="subtitle2" fontWeight={700}>Fecha & Notas</Typography></TableCell>
@@ -209,12 +257,12 @@ export default function ProductionPage() {
           </TableHead>
           <TableBody>
             {filteredOrders.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((order) => (
-              <Row key={order.id} order={order} />
+              <Row key={order.id} order={order} onAdvance={handleAdvanceStatus} />
             ))}
             {filteredOrders.length === 0 && (
               <TableRow>
                 <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
-                   <Typography variant="body1" color="text.secondary">No hay órdenes de producción programadas.</Typography>
+                  <Typography variant="body1" color="text.secondary">No hay órdenes de producción programadas.</Typography>
                 </TableCell>
               </TableRow>
             )}

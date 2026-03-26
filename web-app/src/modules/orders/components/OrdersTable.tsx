@@ -42,22 +42,25 @@ function formatCurrencyCOP(value: number): string {
 
 export default function OrdersTable({ rows, onViewDetail }: Props) {
     return (
-        <Card>
-            <CardContent>
-                <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
-                    Historial de pedidos
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    Consulta pedidos por fecha y revisa el detalle por productos
-                </Typography>
+        <Card sx={{ borderRadius: 0, boxShadow: "none", border: "1px solid #e1dfdd" }}>
+            <CardContent sx={{ p: 0 }}>
+                <Box sx={{ p: 2.5, borderBottom: "1px solid #e1dfdd" }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
+                        Historial de pedidos
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                        Consulta pedidos por fecha y revisa el detalle por productos
+                    </Typography>
+                </Box>
 
                 {rows.length === 0 ? (
                     <Box
                         sx={{
                             p: 3,
-                            borderRadius: 3,
-                            border: (theme) => `1px dashed ${theme.palette.divider}`,
-                            bgcolor: "background.paper",
+                            borderRadius: 0,
+                            border: "1px dashed #e1dfdd",
+                            bgcolor: "#faf9f8",
+                            m: 2.5
                         }}
                     >
                         <Typography sx={{ fontWeight: 700 }}>No hay pedidos para mostrar</Typography>
@@ -69,7 +72,7 @@ export default function OrdersTable({ rows, onViewDetail }: Props) {
                     <Box sx={{ overflowX: "auto" }}>
                         <Table size="small">
                             <TableHead>
-                                <TableRow>
+                                <TableRow sx={{ "& .MuiTableCell-root": { bgcolor: "#faf9f8", fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em" } }}>
                                     <TableCell>Código</TableCell>
                                     <TableCell>Cliente</TableCell>
                                     <TableCell>Fecha pedido</TableCell>
@@ -81,7 +84,7 @@ export default function OrdersTable({ rows, onViewDetail }: Props) {
 
                             <TableBody>
                                 {rows.map((row) => (
-                                    <TableRow key={row.id} hover>
+                                    <TableRow key={row.id} hover sx={{ "& .MuiTableCell-root": { py: 1.5 } }}>
                                         <TableCell sx={{ fontWeight: 700 }}>{row.orderCode}</TableCell>
                                         <TableCell>{row.customerName}</TableCell>
                                         <TableCell>
@@ -95,15 +98,24 @@ export default function OrdersTable({ rows, onViewDetail }: Props) {
                                                 color={getStatusChipColor(row.status)}
                                                 variant="outlined"
                                                 size="small"
+                                                sx={{ borderRadius: 0, fontWeight: 700, fontSize: "0.65rem" }}
                                             />
                                         </TableCell>
                                         <TableCell align="right">
                                             <Stack direction="row" spacing={1} justifyContent="flex-end">
-                                                <Button size="small" variant="text" onClick={() => onViewDetail(row.id)}>
+                                                <Button
+                                                    size="small"
+                                                    variant="text"
+                                                    onClick={() => onViewDetail(row.id)}
+                                                    sx={{ borderRadius: 0, fontWeight: 700, textTransform: "none" }}
+                                                >
                                                     Ver detalle
                                                 </Button>
-                                                {/* Placeholder futuro */}
-                                                <Button size="small" variant="text">
+                                                <Button
+                                                    size="small"
+                                                    variant="text"
+                                                    sx={{ borderRadius: 0, fontWeight: 700, textTransform: "none", color: "#605e5c" }}
+                                                >
                                                     PDF
                                                 </Button>
                                             </Stack>

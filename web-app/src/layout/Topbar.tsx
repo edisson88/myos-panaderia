@@ -32,9 +32,11 @@ const getHeaderInfo = (pathname: string) => {
         case "/pedidos":
             return { title: "Gestión de Pedidos", subtitle: "Control de ventas y facturación" };
         case "/produccion":
-            return { title: "Módulo de Producción", subtitle: "Lotes, procesos y control de calidad" };
+            return { title: "Control de Producción", subtitle: "Lotes, procesos y control de calidad" };
         case "/analitica":
-            return { title: "Analítica · Cuadro de Mando Integral", subtitle: "Perspectivas estratégicas: Financiera, Clientes, Procesos y Aprendizaje" };
+            return { title: "Analítica · Cuadro de Mando Integral", subtitle: "Perspectivas estratégicas y KPI críticos" };
+        case "/importar":
+            return { title: "Importación Masiva", subtitle: "Carga masiva de clientes, productos y pedidos" };
         default:
             return { title: "Myos Panadería", subtitle: "Sistema Operativo" };
     }
@@ -49,10 +51,10 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
     const { title, subtitle } = getHeaderInfo(location.pathname);
 
     const getActionLabel = () => {
-        if (location.pathname === "/clientes") return "+ Nuevo cliente";
-        if (location.pathname === "/productos") return "+ Nuevo producto";
-        if (location.pathname === "/orders") return "+ Nuevo pedido";
-        return "+ Nuevo pedido";
+        if (location.pathname === "/clientes") return "Nuevo cliente";
+        if (location.pathname === "/productos") return "Nuevo producto";
+        if (location.pathname === "/pedidos") return "Nuevo pedido";
+        return "Nuevo pedido";
     };
 
     const handleNewAction = () => {

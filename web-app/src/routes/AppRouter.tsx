@@ -7,6 +7,7 @@ import LoginPage from '../pages/LoginPage';
 import ProductsPage from '../pages/ProductsPage';
 import ProductionPage from '../pages/ProductionPage';
 import AnalyticsPage from '../pages/AnalyticsPage';
+import ImportPage from '../pages/ImportPage';
 import ProtectedRoute from '../components/auth/ProtectedRoute';
 
 
@@ -27,6 +28,7 @@ export default function AppRouter() {
                     <Route path="/clientes" element={<CustomerPage />} />
                     <Route path="/productos" element={<ProductsPage />} />
                     <Route path="/produccion" element={<ProductionPage />} />
+                    <Route path="/importar" element={<ImportPage />} />
                     <Route path="/analitica" element={<AnalyticsPage />} />
                 </Route>
             </Routes>

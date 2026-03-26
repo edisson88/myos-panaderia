@@ -116,27 +116,7 @@ export default function AnalyticsPage() {
     const [tabIndex, setTabIndex] = useState(0);
 
     return (
-        <Box sx={{ bgcolor: "#f3f2f1", minHeight: "100vh", p: { xs: 1.5, md: 3 } }}>
-
-            {/* ── Header ── */}
-            <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>
-                <Box>
-                    <Typography
-                        variant="subtitle1"
-                        sx={{ fontWeight: 700, color: "#323130", letterSpacing: "0.06em", textTransform: "uppercase" }}
-                    >
-                        Analítica & CRM · Myos Panadería
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: "#605e5c" }}>
-                        Centro de inteligencia de negocio y gestión de clientes
-                    </Typography>
-                </Box>
-                <Chip
-                    label="Actualizado ahora"
-                    size="small"
-                    sx={{ bgcolor: "#107c1015", color: "#107c10", fontWeight: 700, fontSize: "0.7rem", display: { xs: "none", sm: "flex" } }}
-                />
-            </Stack>
+        <Box sx={{ bgcolor: "background.default", minHeight: "100vh", p: { xs: 1.5, md: 3 } }}>
 
             {/* ── Tabs ── */}
             <Tabs

@@ -60,27 +60,9 @@ export default function ProductsPage() {
   );
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 3, p: 3 }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center">
-        <Typography variant="h4" sx={{ fontWeight: 800, fontFamily: "Inter, sans-serif" }}>
-          Productos
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          sx={{
-            borderRadius: 3,
-            textTransform: "none",
-            fontWeight: 700,
-            px: 3,
-            boxShadow: "0 4px 14px 0 rgba(0,0,0,0.1)",
-          }}
-        >
-          Nuevo Producto
-        </Button>
-      </Stack>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
 
-      <Card sx={{ borderRadius: 3, boxShadow: "0 8px 24px rgba(149,157,165,0.1)" }}>
+      <Card sx={{ borderRadius: 0, boxShadow: "none", border: "1px solid #e1dfdd" }}>
         <CardContent sx={{ p: 2, paddingBottom: "16px !important" }}>
           <TextField
             fullWidth
@@ -97,17 +79,17 @@ export default function ProductsPage() {
             }}
             sx={{
               "& .MuiOutlinedInput-root": {
-                borderRadius: 2.5,
-                bgcolor: "background.default",
+                borderRadius: 0,
+                bgcolor: "white",
               },
             }}
           />
         </CardContent>
       </Card>
 
-      <TableContainer component={Card} sx={{ borderRadius: 3, boxShadow: "0 8px 30px rgba(0,0,0,0.04)" }}>
-        <Table sx={{ minWidth: 650 }}>
-          <TableHead sx={{ bgcolor: "background.default" }}>
+      <TableContainer component={Card} sx={{ borderRadius: 0, boxShadow: "none", border: "1px solid #e1dfdd" }}>
+        <Table sx={{ minWidth: 650, "& .MuiTableCell-root": { py: 1.5 } }}>
+          <TableHead sx={{ bgcolor: "#faf9f8" }}>
             <TableRow>
               <TableCell><Typography variant="subtitle2" fontWeight={700}>Producto</Typography></TableCell>
               <TableCell><Typography variant="subtitle2" fontWeight={700}>Precio (COP)</Typography></TableCell>
@@ -134,7 +116,7 @@ export default function ProductsPage() {
                     label={product.active ? "Activo" : "Inactivo"}
                     color={product.active ? "success" : "default"}
                     size="small"
-                    sx={{ fontWeight: 700, borderRadius: 1.5 }}
+                    sx={{ fontWeight: 700, borderRadius: 0 }}
                   />
                 </TableCell>
                 <TableCell align="right">

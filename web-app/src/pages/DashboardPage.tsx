@@ -18,6 +18,7 @@ import {
 } from "@mui/material";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import OrderDetailDialog, { type OrderDetail } from "../components/OrderDetailDialog";
+import { useNavigate } from "react-router-dom";
 
 import {
     AreaChart,
@@ -185,27 +186,17 @@ const statusColor: Record<string, string> = {
 export default function DashboardPage() {
     const today = new Date().toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long" });
     const [selectedOrder, setSelectedOrder] = useState<OrderDetail | null>(null);
+    const navigate = useNavigate();
+
+    const handleDrillDown = (data: any) => {
+        if (data && data.category) {
+            // Navegar a producción filtrando por la categoría
+            navigate(`/produccion?search=${encodeURIComponent(data.category)}`);
+        }
+    };
 
     return (
-        <Box sx={{ bgcolor: "#f3f2f1", minHeight: "100vh", p: { xs: 1.5, md: 3 } }}>
-
-            {/* ── Header del día ── */}
-            <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2.5}>
-                <Box>
-                    <Typography variant="subtitle1"
-                        sx={{ fontWeight: 700, color: "#323130", letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                        Resumen del Día · Myos Panadería
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: "#605e5c", textTransform: "capitalize" }}>
-                        {today}
-                    </Typography>
-                </Box>
-                <Chip
-                    label="En vivo"
-                    size="small"
-                    sx={{ bgcolor: "#107c1015", color: "#107c10", fontWeight: 700, fontSize: "0.7rem" }}
-                />
-            </Stack>
+        <Box sx={{ bgcolor: "background.default", minHeight: "100vh", p: { xs: 1.5, md: 3 } }}>
 
             <Grid container spacing={2}>
 
@@ -508,8 +499,24 @@ export default function DashboardPage() {
                                         <YAxis dataKey="category" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#323130" }} width={78} />
                                         <RechartsTooltip />
                                         <Legend iconType="square" wrapperStyle={{ fontSize: 12 }} />
-                                        <Bar dataKey="cantidad" name="Producido" stackId="a" fill="#118dff" barSize={14} />
-                                        <Bar dataKey="desperdicio" name="Desperdicio" stackId="a" fill="#d13438" barSize={14} />
+                                        <Bar 
+                                            dataKey="cantidad" 
+                                            name="Producido" 
+                                            stackId="a" 
+                                            fill="#118dff" 
+                                            barSize={14} 
+                                            style={{ cursor: 'pointer' }}
+                                            onClick={(data) => handleDrillDown(data)}
+                                        />
+                                        <Bar 
+                                            dataKey="desperdicio" 
+                                            name="Desperdicio" 
+                                            stackId="a" 
+                                            fill="#d13438" 
+                                            barSize={14} 
+                                            style={{ cursor: 'pointer' }}
+                                            onClick={(data) => handleDrillDown(data)}
+                                        />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </Box>

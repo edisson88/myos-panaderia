@@ -88,6 +88,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                         height: 34,
                         fontSize: 14,
                         fontWeight: 800,
+                        borderRadius: 0,
                     }}
                 >
                     M
@@ -119,7 +120,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                             key={item.label}
                             onClick={() => handleNav(item.path)}
                             sx={{
-                                borderRadius: 2,
+                                borderRadius: 0,
                                 mb: 0.5,
                                 color: active ? "white" : "rgba(255,255,255,0.75)",
                                 bgcolor: active ? BRAND_COLOR_ACTIVE : "transparent",
@@ -147,7 +148,7 @@ export default function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                         key={item.label}
                         onClick={() => handleNav(item.path)}
                         sx={{
-                            borderRadius: 2,
+                            borderRadius: 0,
                             mb: 0.5,
                             color: "rgba(255,255,255,0.75)",
                             "&:hover": { bgcolor: BRAND_COLOR_HOVER, color: "white" },
