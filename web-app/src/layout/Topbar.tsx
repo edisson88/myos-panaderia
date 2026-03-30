@@ -58,13 +58,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
     };
 
     const handleNewAction = () => {
-        if (location.pathname === "/") {
-            navigate("/orders"); // O abrir modal de pedido si existiera
-        } else {
-            // Re-navigates to same path but with openModal=true
-            // useEntityManagement listens to this
-            navigate({ pathname: location.pathname, search: "?openModal=true" });
-        }
+        navigate({ pathname: location.pathname === "/" ? "/pedidos" : location.pathname, search: "?openModal=true" });
     };
 
     const handleLogout = () => {

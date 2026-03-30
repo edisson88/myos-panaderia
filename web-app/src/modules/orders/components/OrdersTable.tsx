@@ -17,18 +17,27 @@ import type { OrderListRow } from "../OrdersType";
 type Props = {
     rows: OrderListRow[];
     onViewDetail: (orderId: string) => void;
+    onEdit: (orderId: string) => void;
 };
 
 function getStatusChipColor(status: string): "success" | "warning" | "error" | "default" {
     const s = status.toLowerCase();
-
-    if (["delivered", "entregado"].includes(s)) return "success";
-    if (["confirmed", "confirmado"].includes(s)) return "success";
-    if (["in_production", "en producción", "en produccion"].includes(s)) return "warning";
-    if (["pending", "pendiente"].includes(s)) return "default";
-    if (["cancelled", "cancelado"].includes(s)) return "error";
-
+    if (s === "delivered") return "success";
+    if (s === "confirmed") return "success";
+    if (s === "in_production") return "warning";
+    if (s === "with_issue") return "error";
     return "default";
+}
+
+function getStatusLabel(value: string): string {
+    const labels: Record<string, string> = {
+        draft:         "Creado",
+        confirmed:     "Confirmado",
+        in_production: "En producción",
+        delivered:     "Entregado",
+        with_issue:    "Con novedad",
+    };
+    return labels[value] ?? value;
 }
 
 function formatCurrencyCOP(value: number): string {
@@ -40,7 +49,7 @@ function formatCurrencyCOP(value: number): string {
     }).format(value);
 }
 
-export default function OrdersTable({ rows, onViewDetail }: Props) {
+export default function OrdersTable({ rows, onViewDetail, onEdit }: Props) {
     return (
         <Card sx={{ borderRadius: 0, boxShadow: "none", border: "1px solid #e1dfdd" }}>
             <CardContent sx={{ p: 0 }}>
@@ -94,7 +103,7 @@ export default function OrdersTable({ rows, onViewDetail }: Props) {
                                         <TableCell>{formatCurrencyCOP(row.total)}</TableCell>
                                         <TableCell>
                                             <Chip
-                                                label={row.status}
+                                                label={getStatusLabel(row.status)}
                                                 color={getStatusChipColor(row.status)}
                                                 variant="outlined"
                                                 size="small"
@@ -110,6 +119,14 @@ export default function OrdersTable({ rows, onViewDetail }: Props) {
                                                     sx={{ borderRadius: 0, fontWeight: 700, textTransform: "none" }}
                                                 >
                                                     Ver detalle
+                                                </Button>
+                                                <Button
+                                                    size="small"
+                                                    variant="text"
+                                                    onClick={() => onEdit(row.id)}
+                                                    sx={{ borderRadius: 0, fontWeight: 700, textTransform: "none", color: "#6B3A2A" }}
+                                                >
+                                                    Editar
                                                 </Button>
                                                 <Button
                                                     size="small"

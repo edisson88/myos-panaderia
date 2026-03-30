@@ -1,10 +1,14 @@
-import { Box, Typography } from "@mui/material";
-import { useMemo, useState } from "react";
+import { Alert, Box, CircularProgress, Stack } from "@mui/material";
+import { useCallback, useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import OrdersFilters from "../modules/orders/components/OrdersFilters";
 import OrdersKpis from "../modules/orders/components/OrdersKpis";
 import OrdersTable from "../modules/orders/components/OrdersTable";
 import OrderDetailDrawer from "../modules/orders/components/OrderDetailDrawer";
+import CreateOrderDialog from "../modules/orders/components/CreateOrderDialog";
+import { fetchOrders, fetchOrderById } from "../modules/orders/orders.service";
+import { useAuth } from "../hooks/useAuth";
 
 import type {
     OrderDetail,
@@ -13,133 +17,211 @@ import type {
     OrdersKpi,
 } from "../modules/orders/OrdersType";
 
-const kpisMock: OrdersKpi[] = [
-    { label: "Cantidad de pedidos", value: 18, helper: "Rango seleccionado", chipLabel: "Hoy", chipColor: "success" },
-    { label: "Total ingresos", value: "$ 1.245.000", helper: "Estimado", chipLabel: "Pendiente", chipColor: "warning" },
-    { label: "Producto más vendido", value: "Pan campesino", helper: "Por unidades", chipLabel: "Top", chipColor: "success" },
-    { label: "Producto menos vendido", value: "Croissant", helper: "Por unidades", chipLabel: "Bajo", chipColor: "default" },
-];
+// ── KPIs derivados de la lista cargada ───────────────────────────────────────
 
-const rowsMock: OrderListRow[] = [
-    {
-        id: "1",
-        orderCode: "ORD-0001",
-        customerName: "María Cárdenas",
-        orderDate: "22/02/2026",
-        deliveryDate: "22/02/2026",
-        status: "in_production",
-        total: 98000,
-    },
-    {
-        id: "2",
-        orderCode: "ORD-0002",
-        customerName: "Café Niza",
-        orderDate: "22/02/2026",
-        deliveryDate: "23/02/2026",
-        status: "confirmed",
-        total: 245000,
-    },
-    {
-        id: "3",
-        orderCode: "ORD-0003",
-        customerName: "Juan Rojas",
-        orderDate: "21/02/2026",
-        deliveryDate: null,
-        status: "delivered",
-        total: 42500,
-    },
-];
+function computeKpis(rows: OrderListRow[]): OrdersKpi[] {
+    const total = rows.reduce((sum, r) => sum + r.total, 0);
+    const formattedTotal = new Intl.NumberFormat("es-CO", {
+        style: "currency",
+        currency: "COP",
+        maximumFractionDigits: 0,
+    }).format(total);
 
-const detailsMockById: Record<string, OrderDetail> = {
-    "1": {
-        id: "1",
-        orderCode: "ORD-0001",
-        customerName: "María Cárdenas",
-        orderDate: "22/02/2026",
-        deliveryDate: "22/02/2026",
-        status: "in_production",
-        notes: "Entregar en portería. Llamar al llegar.",
-        total: 98000,
-        items: [
-            { id: "1-1", productName: "Pan campesino", quantity: 4, unitPrice: 8000, subtotal: 32000 },
-            { id: "1-2", productName: "Almojábana", quantity: 10, unitPrice: 3200, subtotal: 32000 },
-            { id: "1-3", productName: "Galletas avena", quantity: 5, unitPrice: 6800, subtotal: 34000 },
-        ],
-    },
-    "2": {
-        id: "2",
-        orderCode: "ORD-0002",
-        customerName: "Café Niza",
-        orderDate: "22/02/2026",
-        deliveryDate: "23/02/2026",
-        status: "confirmed",
-        notes: null,
-        total: 245000,
-        items: [
-            { id: "2-1", productName: "Croissant", quantity: 30, unitPrice: 4500, subtotal: 135000 },
-            { id: "2-2", productName: "Pan brioche", quantity: 20, unitPrice: 5500, subtotal: 110000 },
-        ],
-    },
-    "3": {
-        id: "3",
-        orderCode: "ORD-0003",
-        customerName: "Juan Rojas",
-        orderDate: "21/02/2026",
-        deliveryDate: null,
-        status: "delivered",
-        notes: "Pago contra entrega.",
-        total: 42500,
-        items: [
-            { id: "3-1", productName: "Pan de queso", quantity: 10, unitPrice: 2500, subtotal: 25000 },
-            { id: "3-2", productName: "Mogolla", quantity: 5, unitPrice: 3500, subtotal: 17500 },
-        ],
-    },
+    const byStatus = (s: string) => rows.filter((r) => r.status === s).length;
+
+    return [
+        {
+            label: "Cantidad de pedidos",
+            value: rows.length,
+            helper: "Rango seleccionado",
+            chipLabel: "Total",
+            chipColor: "default",
+        },
+        {
+            label: "Total ingresos",
+            value: formattedTotal,
+            helper: "Suma del período",
+            chipLabel: "Estimado",
+            chipColor: "warning",
+        },
+        {
+            label: "En producción",
+            value: byStatus("in_production"),
+            helper: "Pedidos activos",
+            chipLabel: "Activo",
+            chipColor: "warning",
+        },
+        {
+            label: "Entregados",
+            value: byStatus("delivered"),
+            helper: "Completados en el período",
+            chipLabel: "OK",
+            chipColor: "success",
+        },
+    ];
+}
+
+const DEFAULT_FILTERS: OrdersFiltersType = {
+    dateFrom: null,
+    dateTo: null,
+    search: "",
+    status: null,
 };
 
 export default function OrdersPage() {
-    const [filters, setFilters] = useState<OrdersFiltersType>({
-        dateFrom: null,
-        dateTo: null,
-        search: "",
-        status: null,
-    });
+    const { token } = useAuth();
+    const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+
+    const [filters, setFilters] = useState<OrdersFiltersType>(DEFAULT_FILTERS);
+    const [appliedFilters, setAppliedFilters] = useState<OrdersFiltersType>(DEFAULT_FILTERS);
+
+    const [rows, setRows] = useState<OrderListRow[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const [detailOpen, setDetailOpen] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState<OrderDetail | null>(null);
+    const [detailLoading, setDetailLoading] = useState(false);
+    const [detailError, setDetailError] = useState<string | null>(null);
+    const [editModeOnOpen, setEditModeOnOpen] = useState(false);
+
+    // Dialog de creación — se abre cuando el Topbar navega con ?openModal=true
+    const [createOpen, setCreateOpen] = useState(false);
+
+    useEffect(() => {
+        if (searchParams.get("openModal") === "true") {
+            setCreateOpen(true);
+            // Limpia el query param sin recargar
+            navigate("/pedidos", { replace: true });
+        }
+    }, [searchParams, navigate]);
+
+    const loadOrders = useCallback(
+        async (f: OrdersFiltersType) => {
+            if (!token) return;
+            setLoading(true);
+            setError(null);
+            try {
+                const data = await fetchOrders(f, token);
+                setRows(data);
+            } catch (err) {
+                setError(err instanceof Error ? err.message : "Error al cargar pedidos");
+            } finally {
+                setLoading(false);
+            }
+        },
+        [token],
+    );
+
+    useEffect(() => {
+        loadOrders(appliedFilters);
+    }, [loadOrders, appliedFilters]);
 
     const handleApply = () => {
-        // MVP: solo para verificar flujo. Luego aquí disparamos refetch con variables.
-        console.log("Apply filters:", filters);
+        setAppliedFilters(filters);
     };
 
     const handleClear = () => {
-        setFilters({ dateFrom: null, dateTo: null, search: "", status: null });
+        setFilters(DEFAULT_FILTERS);
+        setAppliedFilters(DEFAULT_FILTERS);
     };
 
-    const handleViewDetail = (orderId: string) => {
-        const found = detailsMockById[orderId] ?? null;
-        setSelectedOrder(found);
+    const handleViewDetail = async (orderId: string) => {
+        if (!token) return;
+        setSelectedOrder(null);
+        setDetailError(null);
+        setEditModeOnOpen(false);
         setDetailOpen(true);
+        setDetailLoading(true);
+        try {
+            const detail = await fetchOrderById(orderId, token);
+            setSelectedOrder(detail);
+        } catch (err) {
+            setDetailError(err instanceof Error ? err.message : "Error al cargar el pedido");
+        } finally {
+            setDetailLoading(false);
+        }
+    };
+
+    const handleEditOrder = async (orderId: string) => {
+        if (!token) return;
+        setSelectedOrder(null);
+        setDetailError(null);
+        setEditModeOnOpen(true);
+        setDetailOpen(true);
+        setDetailLoading(true);
+        try {
+            const detail = await fetchOrderById(orderId, token);
+            setSelectedOrder(detail);
+        } catch (err) {
+            setDetailError(err instanceof Error ? err.message : "Error al cargar el pedido");
+        } finally {
+            setDetailLoading(false);
+        }
     };
 
     const handleCloseDetail = () => {
         setDetailOpen(false);
-        // opcional: limpiar al cerrar
-        // setSelectedOrder(null);
+        setSelectedOrder(null);
+        setDetailError(null);
+        setEditModeOnOpen(false);
     };
 
-    // Por ahora la tabla muestra mocks. Luego filtramos con queries.
-    const tableRows = useMemo(() => rowsMock, []);
+    const refreshDetail = useCallback(async (orderId: string) => {
+        if (!token) return;
+        setDetailLoading(true);
+        try {
+            const detail = await fetchOrderById(orderId, token);
+            setSelectedOrder(detail);
+        } catch {
+            // no bloquear la vista si falla el re-fetch
+        } finally {
+            setDetailLoading(false);
+        }
+    }, [token]);
 
     return (
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <OrdersFilters value={filters} onChange={setFilters} onApply={handleApply} onClear={handleClear} />
 
-            <OrdersKpis kpis={kpisMock} />
+            {error && (
+                <Alert severity="error" sx={{ borderRadius: 0 }}>
+                    {error}
+                </Alert>
+            )}
 
-            <OrdersTable rows={tableRows} onViewDetail={handleViewDetail} />
+            <OrdersKpis kpis={computeKpis(rows)} />
 
-            <OrderDetailDrawer open={detailOpen} onClose={handleCloseDetail} order={selectedOrder} />
+            {loading ? (
+                <Stack alignItems="center" py={5}>
+                    <CircularProgress size={32} />
+                </Stack>
+            ) : (
+                <OrdersTable rows={rows} onViewDetail={handleViewDetail} onEdit={handleEditOrder} />
+            )}
+
+            <OrderDetailDrawer
+                open={detailOpen}
+                onClose={handleCloseDetail}
+                order={selectedOrder}
+                loading={detailLoading}
+                error={detailError}
+                openInEditMode={editModeOnOpen}
+                onUpdated={() => {
+                    loadOrders(appliedFilters);
+                    if (selectedOrder) refreshDetail(selectedOrder.id);
+                }}
+            />
+
+            <CreateOrderDialog
+                open={createOpen}
+                onClose={() => setCreateOpen(false)}
+                onCreated={() => {
+                    setCreateOpen(false);
+                    loadOrders(appliedFilters);
+                }}
+            />
         </Box>
     );
 }
