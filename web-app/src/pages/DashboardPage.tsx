@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAuth } from "../hooks/useAuth";
 import {
   Box,
   Card,
@@ -9,6 +10,7 @@ import {
   Chip,
   Divider,
   Table,
+  Button,
   TableBody,
   TableCell,
   TableHead,
@@ -24,6 +26,10 @@ import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import { useDashboard } from "../modules/dashboard/useDashboard";
 import type { DashboardOrder, DashboardInventoryItem } from "../modules/dashboard/dashboard.service";
+import EditStatusDialog from "../components/EditStatusDialog";
+import ConfirmOrderDialog from "../components/ConfirmOrderDialog";
+import InvoiceDialog from "../components/InvoiceDialog";
+import { updateOrderStatus } from "../modules/orders/orders.service";
 
 // ── Style tokens ──────────────────────────────────────────────────────────────
 const panel = {
@@ -36,19 +42,19 @@ const panel = {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const statusColor: Record<string, string> = {
-  created: "#605e5c",
-  confirmed: "#0078d4",
-  in_progress: "#f59e0b",
-  delivered: "#107c10",
-  cancelled: "#a4262c",
+  draft:         "#605e5c",
+  confirmed:     "#0078d4",
+  in_production: "#f59e0b",
+  delivered:     "#107c10",
+  with_issue:    "#a4262c",
 };
 
 const statusLabel: Record<string, string> = {
-  created: "Creado",
-  confirmed: "Confirmado",
-  in_progress: "En producción",
-  delivered: "Completado",
-  cancelled: "Cancelado",
+  draft:         "Creado",
+  confirmed:     "Confirmado",
+  in_production: "En producción",
+  delivered:     "Entregado",
+  with_issue:    "Con novedad",
 };
 
 function formatCOP(value: number): string {
@@ -65,19 +71,58 @@ function formatTime(isoString: string): string {
 // ── Subcomponente: Fila de pedido con desplegable ─────────────────────────────
 function OrderRow({ order }: { order: DashboardOrder }) {
   const [open, setOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [invoiceOpen, setInvoiceOpen] = useState(false);
+  const [editStatusOpen, setEditStatusOpen] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const { token, user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const canConfirm = order.status !== "delivered" && 
+                     order.status !== "with_issue";
+
+  const handleConfirm = async () => {
+    if (!token) return;
+    setIsUpdating(true);
+    try {
+      await updateOrderStatus(order.id, "delivered", token);
+      setConfirmOpen(false);
+      setInvoiceOpen(true);
+    } catch (err) {
+      console.error("Error confirmando pedido:", err);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleEditStatus = async (newStatus: string) => {
+    if (!token) return;
+    setIsUpdating(true);
+    try {
+      await updateOrderStatus(order.id, newStatus, token);
+      setEditStatusOpen(false);
+    } catch (err) {
+      console.error("Error actualizando estado:", err);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   return (
     <>
       <TableRow
         sx={{
-          cursor: "pointer",
           "&:hover": { bgcolor: "#f0f4ff" },
           transition: "background 0.15s",
         }}
-        onClick={() => setOpen((prev) => !prev)}
       >
+        {/* Flecha desplegable */}
         <TableCell sx={{ py: 1, px: 1.5 }}>
-          <IconButton size="small" sx={{ p: 0.25 }}>
+          <IconButton
+            size="small"
+            sx={{ p: 0.25 }}
+            onClick={() => setOpen((prev) => !prev)}
+          >
             {open ? (
               <KeyboardArrowUpIcon fontSize="small" />
             ) : (
@@ -85,16 +130,33 @@ function OrderRow({ order }: { order: DashboardOrder }) {
             )}
           </IconButton>
         </TableCell>
-        <TableCell sx={{ fontSize: "0.8rem", fontWeight: 600, color: "#323130" }}>
+
+        {/* Código */}
+        <TableCell
+          sx={{ fontSize: "0.8rem", fontWeight: 600, color: "#323130", cursor: "pointer" }}
+          onClick={() => setOpen((prev) => !prev)}
+        >
           {order.orderCode}
         </TableCell>
-        <TableCell sx={{ fontSize: "0.8rem", color: "#323130" }}>
+
+        {/* Cliente */}
+        <TableCell
+          sx={{ fontSize: "0.8rem", color: "#323130", cursor: "pointer" }}
+          onClick={() => setOpen((prev) => !prev)}
+        >
           {order.customerName}
         </TableCell>
-        <TableCell sx={{ fontSize: "0.75rem", color: "#605e5c" }}>
+
+        {/* Hora */}
+        <TableCell
+          sx={{ fontSize: "0.75rem", color: "#605e5c", cursor: "pointer" }}
+          onClick={() => setOpen((prev) => !prev)}
+        >
           {formatTime(order.createdAt)}
         </TableCell>
-        <TableCell>
+
+        {/* Estado */}
+        <TableCell onClick={() => setOpen((prev) => !prev)} sx={{ cursor: "pointer" }}>
           <Chip
             label={statusLabel[order.status] ?? order.status}
             size="small"
@@ -107,19 +169,104 @@ function OrderRow({ order }: { order: DashboardOrder }) {
             }}
           />
         </TableCell>
-        <TableCell align="right" sx={{ fontWeight: 700, fontSize: "0.8rem" }}>
+
+        {/* Total */}
+        <TableCell
+          align="right"
+          sx={{ fontWeight: 700, fontSize: "0.8rem", cursor: "pointer" }}
+          onClick={() => setOpen((prev) => !prev)}
+        >
           {formatCOP(order.total)}
+        </TableCell>
+
+        {/* Acciones */}
+        <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
+          <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+
+            {/* Ver factura — siempre visible */}
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => setInvoiceOpen(true)}
+              sx={{
+                borderRadius: 0,
+                fontSize: "0.65rem",
+                py: 0.25,
+                px: 1,
+                borderColor: "#e1dfdd",
+                color: "#605e5c",
+                minWidth: "auto",
+              }}
+            >
+              Ver factura
+            </Button>
+
+            {/* Confirmar — solo si puede confirmarse */}
+            {canConfirm && (
+              <Button
+                size="small"
+                variant="contained"
+                onClick={() => setConfirmOpen(true)}
+                sx={{
+                  borderRadius: 0,
+                  fontSize: "0.65rem",
+                  py: 0.25,
+                  px: 1,
+                  bgcolor: "#107c10",
+                  "&:hover": { bgcolor: "#0b5c0b" },
+                  minWidth: "auto",
+                }}
+              >
+                Confirmar
+              </Button>
+            )}
+
+            {/* Editar estado — solo admin */}
+            {isAdmin && (
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => setEditStatusOpen(true)}
+                sx={{
+                  borderRadius: 0,
+                  fontSize: "0.65rem",
+                  py: 0.25,
+                  px: 1,
+                  borderColor: "#0078d4",
+                  color: "#0078d4",
+                  minWidth: "auto",
+                }}
+              >
+                Estado
+              </Button>
+            )}
+
+          </Stack>
         </TableCell>
       </TableRow>
 
-      {/* Fila desplegable con detalle del pedido */}
+      {/* Fila desplegable con detalle */}
       <TableRow>
-        <TableCell colSpan={6} sx={{ py: 0, px: 0, border: 0 }}>
+        <TableCell colSpan={7} sx={{ py: 0, px: 0, border: 0 }}>
           <Collapse in={open} timeout="auto" unmountOnExit>
-            <Box sx={{ bgcolor: "#faf9f8", px: 4, py: 1.5, borderBottom: "1px solid #e1dfdd" }}>
+            <Box
+              sx={{
+                bgcolor: "#faf9f8",
+                px: 4,
+                py: 1.5,
+                borderBottom: "1px solid #e1dfdd",
+              }}
+            >
               <Typography
                 variant="caption"
-                sx={{ fontWeight: 700, color: "#605e5c", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", mb: 1 }}
+                sx={{
+                  fontWeight: 700,
+                  color: "#605e5c",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.06em",
+                  display: "block",
+                  mb: 1,
+                }}
               >
                 Productos
               </Typography>
@@ -152,6 +299,29 @@ function OrderRow({ order }: { order: DashboardOrder }) {
           </Collapse>
         </TableCell>
       </TableRow>
+
+      {/* Diálogos */}
+      <ConfirmOrderDialog
+        open={confirmOpen}
+        order={order}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={handleConfirm}
+        isLoading={isUpdating}
+      />
+
+      <InvoiceDialog
+        open={invoiceOpen}
+        order={order}
+        onClose={() => setInvoiceOpen(false)}
+      />
+
+      <EditStatusDialog
+        open={editStatusOpen}
+        order={order}
+        onClose={() => setEditStatusOpen(false)}
+        onSave={handleEditStatus}
+        isLoading={isUpdating}
+      />
     </>
   );
 }

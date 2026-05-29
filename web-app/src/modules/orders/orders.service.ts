@@ -58,7 +58,7 @@ function mapToOrderDetail(item: ApiOrderDetail): OrderDetail {
         status: item.status,
         notes: item.notes,
         total: item.total,
-        items: item.order_items.map((oi) => ({
+        items: (item.order_items ?? []).map((oi) => ({
             id: oi.id,
             productId: oi.product_id,
             productName: oi.products?.[0]?.name ?? "—",
