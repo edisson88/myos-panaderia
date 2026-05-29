@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const ProductionStatusEnum = z.enum(["draft", "in_progress", "completed", "cancelled"]);
+export const ProductionStatusEnum = z.enum(["draft", "in_progress", "delivered", "cancelled"]);
 export type ProductionStatus = z.infer<typeof ProductionStatusEnum>;
 
 export const ProductionItemSchema = z.object({

@@ -47,7 +47,7 @@ const INITIAL_PRODUCTION: ProductionOrder[] = [
   {
     id: "prod-002",
     date: new Date().toISOString(),
-    status: "completed",
+    status: "delivered",
     notes: "Repostería tarde",
     items: [
       { id: "item-3", product_id: "2", product_name: "Croissant de Almendras", quantity_planned: 20, quantity_produced: 20 },
@@ -62,7 +62,7 @@ const Row = ({ order, onAdvance }: { order: ProductionOrder; onAdvance: (id: str
   const statusConfig: Record<string, { label: string; color: any }> = {
     draft: { label: "Borrador", color: "default" },
     in_progress: { label: "En Progreso", color: "warning" },
-    completed: { label: "Completada", color: "success" },
+    delivered: { label: "Completada", color: "success" },
     cancelled: { label: "Cancelada", color: "error" },
   };
 
@@ -97,12 +97,12 @@ const Row = ({ order, onAdvance }: { order: ProductionOrder; onAdvance: (id: str
                   size="small"
                   label={getStatus(order.status).label}
                   color={getStatus(order.status).color}
-                  icon={order.status === 'completed' ? <CheckCircleIcon /> : undefined}
+                  icon={order.status === 'delivered' ? <CheckCircleIcon /> : undefined}
                   sx={{ 
                     fontWeight: 700, 
                     borderRadius: 0,
                     transition: 'all 0.4s ease-in-out',
-                    ...(order.status === 'completed' && {
+                    ...(order.status === 'delivered' && {
                       bgcolor: '#dff6dd',
                       color: '#107c10',
                       '& .MuiChip-icon': { color: '#107c10' }
@@ -113,7 +113,7 @@ const Row = ({ order, onAdvance }: { order: ProductionOrder; onAdvance: (id: str
             </AnimatePresence>
             
             {/* Pequeño destello de celebración al completar */}
-            {order.status === 'completed' && (
+            {order.status === 'delivered' && (
               <motion.div
                 initial={{ scale: 0, opacity: 0 }}
                 animate={{ scale: [1, 1.5, 0], opacity: [0, 0.8, 0] }}
@@ -135,12 +135,12 @@ const Row = ({ order, onAdvance }: { order: ProductionOrder; onAdvance: (id: str
             size="small" 
             color="primary" 
             title="Avanzar Estado" 
-            onClick={() => onAdvance(order.id)}
-            disabled={order.status === 'completed' || order.status === 'cancelled'}
+            onClick={() => order.id && onAdvance(order.id)}
+            disabled={order.status === 'delivered' || order.status === 'cancelled'}
           >
             <RocketLaunchIcon fontSize="small" />
           </IconButton>
-          <IconButton size="small" color="error" title="Cancelar" disabled={order.status === 'completed' || order.status === 'cancelled'}>
+          <IconButton size="small" color="error" title="Cancelar" disabled={order.status === 'delivered' || order.status === 'cancelled'}>
             <CancelIcon fontSize="small" />
           </IconButton>
         </TableCell>
@@ -206,7 +206,7 @@ export default function ProductionPage() {
   const handleAdvanceStatus = (id: string) => {
     setOrders(prev => prev.map(order => 
       order.id === id 
-        ? { ...order, status: order.status === 'draft' ? 'in_progress' : 'completed' } as ProductionOrder
+        ? { ...order, status: order.status === 'draft' ? 'in_progress' : 'delivered' } as ProductionOrder
         : order
     ));
   };

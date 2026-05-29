@@ -19,9 +19,9 @@ export class DashboardController {
     return this.dashboardService.getRecentOrders();
   }
 
-  /** GET /api/dashboard/alerts */
-  @Get('alerts')
-  getAlerts() {
-    return this.dashboardService.getAlerts();
+  /** GET /api/dashboard/inventory */
+  @Get('inventory')
+  getInventory() {
+    return this.dashboardService.getInventory();
   }
 }
