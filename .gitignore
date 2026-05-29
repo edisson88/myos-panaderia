@@ -1,6 +1,4 @@
 # root
-env.env
-.env
 .env.local
 
 # frontend
