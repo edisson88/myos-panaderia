@@ -39,26 +39,91 @@ function formatDateTime(isoString: string): string {
 }
 
 // ── Generador del HTML de la tirilla térmica ──────────────────────────────────
+// Impresoras térmicas básicas no renderizan <table> de forma confiable.
+// Se usa texto plano monoespaciado dentro de <pre> — el driver imprime
+// carácter por carácter respetando exactamente las columnas calculadas.
+
+const LINE_WIDTH = 32; // caracteres por línea para 80mm en fuente ~12px monoespaciada
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+// Alinea dos textos a izquierda y derecha dentro del ancho de línea
+function twoCols(left: string, right: string, width = LINE_WIDTH): string {
+  const space = width - left.length - right.length;
+  if (space <= 0) return `${left}\n${right.padStart(width)}`;
+  return left + " ".repeat(space) + right;
+}
+
+// Centra un texto dentro del ancho de línea
+function center(text: string, width = LINE_WIDTH): string {
+  if (text.length >= width) return text;
+  const pad = Math.floor((width - text.length) / 2);
+  return " ".repeat(pad) + text;
+}
+
+// Línea separadora
+function divider(width = LINE_WIDTH): string {
+  return "-".repeat(width);
+}
+
 function generateThermalHTML(order: DashboardOrder): string {
-  const itemRows = order.items
-    .map((item) => {
-      const name = (item.productName ?? "").length > 20
-        ? (item.productName ?? "").substring(0, 18) + ".."
-        : (item.productName ?? "").padEnd(20);
-      const qty = String(item.quantity).padStart(3);
-      const price = formatCOP(item.unitPrice).padStart(10);
-      const subtotal = formatCOP(item.subtotal).padStart(10);
-      return `
-        <tr>
-          <td colspan="3" style="padding: 1px 0; font-size: 11px;">${name?? ""}</td>
-        </tr>
-        <tr>
-          <td style="padding: 1px 0; font-size: 11px; color: #555;">${qty} x ${price}</td>
-          <td style="padding: 1px 0; font-size: 11px;" colspan="2" align="right">${subtotal}</td>
-        </tr>
-      `;
-    })
-    .join("");
+  const lines: string[] = [];
+
+  // Encabezado
+  lines.push(center(BAKERY.name.toUpperCase()));
+  lines.push(center(BAKERY.address));
+  lines.push(center(`${BAKERY.city} - Tel: ${BAKERY.phone}`));
+  lines.push(divider());
+
+  // Datos del pedido
+  lines.push(`Pedido:  ${order.orderCode}`);
+  lines.push(`Cliente: ${order.customerName}`);
+  lines.push(`Fecha:   ${formatDateTime(order.createdAt)}`);
+  if (order.deliveryDate) {
+    lines.push(`Entrega: ${formatDateTime(order.deliveryDate)}`);
+  }
+  lines.push(divider());
+
+  // Encabezado productos
+  lines.push("PRODUCTO");
+  lines.push(divider());
+
+  // Items
+  for (const item of order.items) {
+    const name = item.productName ?? "Producto";
+    lines.push(name);
+
+    const detail = `${item.quantity} x ${formatCOP(item.unitPrice)}`;
+    const subtotal = formatCOP(item.subtotal);
+    lines.push(twoCols(detail, subtotal));
+    lines.push("");
+  }
+
+  lines.push(divider());
+
+  // Total
+  lines.push(twoCols("TOTAL:", formatCOP(order.total)));
+  lines.push(divider());
+
+  // Notas
+  if (order.notes) {
+    lines.push(`Nota: ${order.notes}`);
+    lines.push(divider());
+  }
+
+  // Pie
+  lines.push("");
+  lines.push(center("Gracias por su compra!"));
+  lines.push(center(`${BAKERY.name} - ${BAKERY.city}`));
+  lines.push("");
+  lines.push("");
+
+  const content = escapeHtml(lines.join("\n"));
 
   return `<!DOCTYPE html>
 <html>
@@ -68,130 +133,28 @@ function generateThermalHTML(order: DashboardOrder): string {
   <style>
     @page {
       size: 80mm auto;
-      margin: 4mm;
+      margin: 0;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
+      width: 80mm;
+      padding: 2mm 4mm;
+    }
+    pre {
       font-family: 'Courier New', Courier, monospace;
       font-size: 12px;
-      width: 72mm;
+      line-height: 1.35;
+      white-space: pre-wrap;
+      word-break: break-word;
       color: #000;
     }
-    .center { text-align: center; }
-    .bold { font-weight: bold; }
-    .divider {
-      border: none;
-      border-top: 1px dashed #000;
-      margin: 4px 0;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    td { vertical-align: top; }
-    .header-title {
-      font-size: 15px;
-      font-weight: bold;
-      text-align: center;
-      margin-bottom: 2px;
-    }
-    .header-sub {
-      font-size: 10px;
-      text-align: center;
-      color: #333;
-      line-height: 1.4;
-    }
-    .label { color: #555; font-size: 10px; }
-    .total-row td {
-      font-size: 13px;
-      font-weight: bold;
-      padding-top: 4px;
-    }
-    .footer {
-      text-align: center;
-      font-size: 10px;
-      margin-top: 8px;
-      color: #333;
-    }
     @media print {
-      body { width: 72mm; }
+      body { width: 80mm; }
     }
   </style>
 </head>
 <body>
-
-  <!-- Encabezado -->
-  <div class="header-title">${BAKERY.name}</div>
-  <div class="header-sub">
-    ${BAKERY.address}<br/>
-    ${BAKERY.city} · Tel: ${BAKERY.phone}
-  </div>
-
-  <hr class="divider"/>
-
-  <!-- Datos del pedido -->
-  <table>
-    <tr>
-      <td class="label">Pedido:</td>
-      <td class="bold" align="right">${order.orderCode}</td>
-    </tr>
-    <tr>
-      <td class="label">Cliente:</td>
-      <td align="right">${order.customerName}</td>
-    </tr>
-    <tr>
-      <td class="label">Fecha:</td>
-      <td align="right">${formatDateTime(order.createdAt)}</td>
-    </tr>
-    ${order.deliveryDate ? `
-    <tr>
-      <td class="label">Entrega:</td>
-      <td align="right">${formatDateTime(order.deliveryDate)}</td>
-    </tr>` : ""}
-  </table>
-
-  <hr class="divider"/>
-
-  <!-- Encabezado productos -->
-  <table>
-    <tr>
-      <td class="label bold">Producto</td>
-      <td class="label bold" align="right">Total</td>
-    </tr>
-  </table>
-
-  <hr class="divider"/>
-
-  <!-- Items -->
-  <table>
-    ${itemRows}
-  </table>
-
-  <hr class="divider"/>
-
-  <!-- Total -->
-  <table>
-    <tr class="total-row">
-      <td>TOTAL:</td>
-      <td align="right">${formatCOP(order.total)}</td>
-    </tr>
-  </table>
-
-  <hr class="divider"/>
-
-  <!-- Notas -->
-  ${order.notes ? `
-  <div style="font-size: 10px; margin: 4px 0; color: #333;">
-    Nota: ${order.notes}
-  </div>
-  <hr class="divider"/>` : ""}
-
-  <!-- Pie -->
-  <div class="footer">
-    ¡Gracias por su compra!<br/>
-    ${BAKERY.name} · ${BAKERY.city}
-  </div>
-
+<pre>${content}</pre>
 </body>
 </html>`;
 }
@@ -202,7 +165,7 @@ function generateA4HTML(order: DashboardOrder): string {
     .map(
       (item) => `
       <tr>
-        <td>${name ?? ""}</td>
+        <td>${item.productName ?? ""}</td>
         <td align="center">${item.quantity}</td>
         <td align="right">${formatCOP(item.unitPrice)}</td>
         <td align="right"><strong>${formatCOP(item.subtotal)}</strong></td>
