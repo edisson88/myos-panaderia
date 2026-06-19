@@ -29,8 +29,14 @@ const getHeaderInfo = (pathname: string) => {
             return { title: "Módulo de Clientes", subtitle: "Gestión de base de datos y segmentación" };
         case "/productos":
             return { title: "Catálogo de Productos", subtitle: "Administración de inventario y precios" };
-        case "/orders":
+        case "/pedidos":
             return { title: "Gestión de Pedidos", subtitle: "Control de ventas y facturación" };
+        case "/produccion":
+            return { title: "Control de Producción", subtitle: "Lotes, procesos y control de calidad" };
+        case "/analitica":
+            return { title: "Analítica · Cuadro de Mando Integral", subtitle: "Perspectivas estratégicas y KPI críticos" };
+        case "/importar":
+            return { title: "Importación Masiva", subtitle: "Carga masiva de clientes, productos y pedidos" };
         default:
             return { title: "Myos Panadería", subtitle: "Sistema Operativo" };
     }
@@ -45,20 +51,14 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
     const { title, subtitle } = getHeaderInfo(location.pathname);
 
     const getActionLabel = () => {
-        if (location.pathname === "/clientes") return "+ Nuevo cliente";
-        if (location.pathname === "/productos") return "+ Nuevo producto";
-        if (location.pathname === "/orders") return "+ Nuevo pedido";
-        return "+ Nuevo pedido";
+        if (location.pathname === "/clientes") return "Nuevo cliente";
+        if (location.pathname === "/productos") return "Nuevo producto";
+        if (location.pathname === "/pedidos") return "Nuevo pedido";
+        return "Nuevo pedido";
     };
 
     const handleNewAction = () => {
-        if (location.pathname === "/") {
-            navigate("/orders"); // O abrir modal de pedido si existiera
-        } else {
-            // Re-navigates to same path but with openModal=true
-            // useEntityManagement listens to this
-            navigate({ pathname: location.pathname, search: "?openModal=true" });
-        }
+        navigate({ pathname: location.pathname === "/" ? "/pedidos" : location.pathname, search: "?openModal=true" });
     };
 
     const handleLogout = () => {

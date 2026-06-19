@@ -1,256 +1,647 @@
+import { useState } from "react";
+import { useAuth } from "../hooks/useAuth";
 import {
-    Box,
-    Button,
-    Card,
-    CardContent,
-    Chip,
-    Grid,
-    Stack,
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableRow,
-    Typography,
+  Box,
+  Card,
+  CardContent,
+  Grid,
+  Stack,
+  Typography,
+  Chip,
+  Divider,
+  Table,
+  Button,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  Skeleton,
+  Collapse,
+  IconButton,
+  Alert,
 } from "@mui/material";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import { useDashboard } from "../modules/dashboard/useDashboard";
+import type { DashboardOrder, DashboardInventoryItem } from "../modules/dashboard/dashboard.service";
+import EditStatusDialog from "../components/EditStatusDialog";
+import ConfirmOrderDialog from "../components/ConfirmOrderDialog";
+import InvoiceDialog from "../components/InvoiceDialog";
+import { updateOrderStatus } from "../modules/orders/orders.service";
 
-import type { Kpi, QuickAction, AlertItem, RecentOrderRow } from "../modules/dashboard/dashboardTypes";
+// ── Style tokens ──────────────────────────────────────────────────────────────
+const panel = {
+  borderRadius: 0,
+  boxShadow: "none",
+  border: "1px solid #e1dfdd",
+  bgcolor: "#ffffff",
+  height: "100%",
+} as const;
 
-const kpis: Kpi[] = [
-    { label: "Pedidos hoy", value: "18", helper: "Comparado con ayer", chipLabel: "+12%", chipColor: "success" },
-    { label: "Ingresos estimados", value: "$ 1.245.000", helper: "Cierre al final del día", chipLabel: "Pendiente", chipColor: "warning" },
-    { label: "Producción en curso", value: "6", helper: "Lotes activos", chipLabel: "En proceso", chipColor: "warning" },
-    { label: "Entregas pendientes", value: "4", helper: "Antes de 4:00 p.m.", chipLabel: "Urgente", chipColor: "error" },
-];
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const statusColor: Record<string, string> = {
+  draft:         "#605e5c",
+  confirmed:     "#0078d4",
+  in_production: "#f59e0b",
+  delivered:     "#107c10",
+  with_issue:    "#a4262c",
+};
 
-const quickActions: QuickAction[] = [
-    { icon: "🧾", title: "Crear pedido", description: "Registrar pedido manual y generar PDF" },
-    { icon: "👥", title: "Nuevo cliente", description: "Crear cliente y datos de contacto" },
-    { icon: "🥐", title: "Nuevo producto", description: "Gestionar catálogo y precios" },
-    { icon: "📄", title: "Orden del día (PDF)", description: "Consolidado diario para enviar" },
-];
+const statusLabel: Record<string, string> = {
+  draft:         "Creado",
+  confirmed:     "Confirmado",
+  in_production: "En producción",
+  delivered:     "Entregado",
+  with_issue:    "Con novedad",
+};
 
-const alerts: AlertItem[] = [
-    { icon: "⏱️", title: "Horneado: Pan campesino", description: "2 lotes para alistamiento (30 min)" },
-    { icon: "📦", title: "Empaque: Galletas avena", description: "Faltan etiquetas del cliente “Café Niza”" },
-    { icon: "🚚", title: "Entrega: Barrio Centro", description: "Ruta sugerida lista (3 pedidos)" },
-];
+function formatCOP(value: number): string {
+  return `$ ${value.toLocaleString("es-CO")}`;
+}
 
-const recentOrders: RecentOrderRow[] = [
-    {
-        date: "22/02/2026",
-        customer: "María Cárdenas",
-        delivery: "Hoy 3:00 p.m.",
-        total: "$ 98.000",
-        statusLabel: "En producción",
-        statusColor: "warning",
-        actions: [{ label: "Ver" }, { label: "PDF" }, { label: "Editar" }],
-    },
-    {
-        date: "22/02/2026",
-        customer: "Café Niza",
-        delivery: "Mañana 8:00 a.m.",
-        total: "$ 245.000",
-        statusLabel: "Confirmado",
-        statusColor: "success",
-        actions: [{ label: "Ver" }, { label: "PDF" }, { label: "Editar" }],
-    },
-    {
-        date: "21/02/2026",
-        customer: "Juan Rojas",
-        delivery: "Entregado",
-        total: "$ 42.500",
-        statusLabel: "Entregado",
-        statusColor: "success",
-        actions: [{ label: "Ver" }, { label: "PDF" }, { label: "Repetir" }],
-    },
-];
+function formatTime(isoString: string): string {
+  return new Date(isoString).toLocaleTimeString("es-CO", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
+// ── Subcomponente: Fila de pedido con desplegable ─────────────────────────────
+function OrderRow({ order }: { order: DashboardOrder }) {
+  const [open, setOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [invoiceOpen, setInvoiceOpen] = useState(false);
+  const [editStatusOpen, setEditStatusOpen] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const { token, user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const canConfirm = order.status !== "delivered" && 
+                     order.status !== "with_issue";
+
+  const handleConfirm = async () => {
+    if (!token) return;
+    setIsUpdating(true);
+    try {
+      await updateOrderStatus(order.id, "delivered", token);
+      setConfirmOpen(false);
+      setInvoiceOpen(true);
+    } catch (err) {
+      console.error("Error confirmando pedido:", err);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleEditStatus = async (newStatus: string) => {
+    if (!token) return;
+    setIsUpdating(true);
+    try {
+      await updateOrderStatus(order.id, newStatus, token);
+      setEditStatusOpen(false);
+    } catch (err) {
+      console.error("Error actualizando estado:", err);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  return (
+    <>
+      <TableRow
+        sx={{
+          "&:hover": { bgcolor: "#f0f4ff" },
+          transition: "background 0.15s",
+        }}
+      >
+        {/* Flecha desplegable */}
+        <TableCell sx={{ py: 1, px: 1.5 }}>
+          <IconButton
+            size="small"
+            sx={{ p: 0.25 }}
+            onClick={() => setOpen((prev) => !prev)}
+          >
+            {open ? (
+              <KeyboardArrowUpIcon fontSize="small" />
+            ) : (
+              <KeyboardArrowDownIcon fontSize="small" />
+            )}
+          </IconButton>
+        </TableCell>
+
+        {/* Código */}
+        <TableCell
+          sx={{ fontSize: "0.8rem", fontWeight: 600, color: "#323130", cursor: "pointer" }}
+          onClick={() => setOpen((prev) => !prev)}
+        >
+          {order.orderCode}
+        </TableCell>
+
+        {/* Cliente */}
+        <TableCell
+          sx={{ fontSize: "0.8rem", color: "#323130", cursor: "pointer" }}
+          onClick={() => setOpen((prev) => !prev)}
+        >
+          {order.customerName}
+        </TableCell>
+
+        {/* Hora */}
+        <TableCell
+          sx={{ fontSize: "0.75rem", color: "#605e5c", cursor: "pointer" }}
+          onClick={() => setOpen((prev) => !prev)}
+        >
+          {formatTime(order.createdAt)}
+        </TableCell>
+
+        {/* Estado */}
+        <TableCell onClick={() => setOpen((prev) => !prev)} sx={{ cursor: "pointer" }}>
+          <Chip
+            label={statusLabel[order.status] ?? order.status}
+            size="small"
+            sx={{
+              height: 18,
+              fontSize: "0.65rem",
+              fontWeight: 700,
+              color: statusColor[order.status] ?? "#605e5c",
+              bgcolor: `${statusColor[order.status] ?? "#605e5c"}18`,
+            }}
+          />
+        </TableCell>
+
+        {/* Total */}
+        <TableCell
+          align="right"
+          sx={{ fontWeight: 700, fontSize: "0.8rem", cursor: "pointer" }}
+          onClick={() => setOpen((prev) => !prev)}
+        >
+          {formatCOP(order.total)}
+        </TableCell>
+
+        {/* Acciones */}
+        <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
+          <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+
+            {/* Ver factura — siempre visible */}
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => setInvoiceOpen(true)}
+              sx={{
+                borderRadius: 0,
+                fontSize: "0.65rem",
+                py: 0.25,
+                px: 1,
+                borderColor: "#e1dfdd",
+                color: "#605e5c",
+                minWidth: "auto",
+              }}
+            >
+              Ver factura
+            </Button>
+
+            {/* Confirmar — solo si puede confirmarse */}
+            {canConfirm && (
+              <Button
+                size="small"
+                variant="contained"
+                onClick={() => setConfirmOpen(true)}
+                sx={{
+                  borderRadius: 0,
+                  fontSize: "0.65rem",
+                  py: 0.25,
+                  px: 1,
+                  bgcolor: "#107c10",
+                  "&:hover": { bgcolor: "#0b5c0b" },
+                  minWidth: "auto",
+                }}
+              >
+                Confirmar
+              </Button>
+            )}
+
+            {/* Editar estado — solo admin */}
+            {isAdmin && (
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => setEditStatusOpen(true)}
+                sx={{
+                  borderRadius: 0,
+                  fontSize: "0.65rem",
+                  py: 0.25,
+                  px: 1,
+                  borderColor: "#0078d4",
+                  color: "#0078d4",
+                  minWidth: "auto",
+                }}
+              >
+                Estado
+              </Button>
+            )}
+
+          </Stack>
+        </TableCell>
+      </TableRow>
+
+      {/* Fila desplegable con detalle */}
+      <TableRow>
+        <TableCell colSpan={7} sx={{ py: 0, px: 0, border: 0 }}>
+          <Collapse in={open} timeout="auto" unmountOnExit>
+            <Box
+              sx={{
+                bgcolor: "#faf9f8",
+                px: 4,
+                py: 1.5,
+                borderBottom: "1px solid #e1dfdd",
+              }}
+            >
+              <Typography
+                variant="caption"
+                sx={{
+                  fontWeight: 700,
+                  color: "#605e5c",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.06em",
+                  display: "block",
+                  mb: 1,
+                }}
+              >
+                Productos
+              </Typography>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontSize: "0.7rem", fontWeight: 700, color: "#605e5c", py: 0.5 }}>Producto</TableCell>
+                    <TableCell align="center" sx={{ fontSize: "0.7rem", fontWeight: 700, color: "#605e5c", py: 0.5 }}>Und.</TableCell>
+                    <TableCell align="right" sx={{ fontSize: "0.7rem", fontWeight: 700, color: "#605e5c", py: 0.5 }}>V. Unit.</TableCell>
+                    <TableCell align="right" sx={{ fontSize: "0.7rem", fontWeight: 700, color: "#605e5c", py: 0.5 }}>Subtotal</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {order.items.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell sx={{ fontSize: "0.78rem", py: 0.75 }}>{item.productName}</TableCell>
+                      <TableCell align="center" sx={{ fontSize: "0.78rem", py: 0.75 }}>{item.quantity}</TableCell>
+                      <TableCell align="right" sx={{ fontSize: "0.78rem", py: 0.75 }}>{formatCOP(item.unitPrice)}</TableCell>
+                      <TableCell align="right" sx={{ fontSize: "0.78rem", fontWeight: 600, py: 0.75 }}>{formatCOP(item.subtotal)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {order.notes && (
+                <Typography variant="caption" sx={{ color: "#605e5c", mt: 1, display: "block" }}>
+                  📝 {order.notes}
+                </Typography>
+              )}
+            </Box>
+          </Collapse>
+        </TableCell>
+      </TableRow>
+
+      {/* Diálogos */}
+      <ConfirmOrderDialog
+        open={confirmOpen}
+        order={order}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={handleConfirm}
+        isLoading={isUpdating}
+      />
+
+      <InvoiceDialog
+        open={invoiceOpen}
+        order={order}
+        onClose={() => setInvoiceOpen(false)}
+      />
+
+      <EditStatusDialog
+        open={editStatusOpen}
+        order={order}
+        onClose={() => setEditStatusOpen(false)}
+        onSave={handleEditStatus}
+        isLoading={isUpdating}
+      />
+    </>
+  );
+}
+
+// ── Subcomponente: Fila de inventario ─────────────────────────────────────────
+function InventoryRow({ item }: { item: DashboardInventoryItem }) {
+  return (
+    <TableRow sx={{ bgcolor: item.belowMinimum ? "#fff4e5" : "transparent" }}>
+      <TableCell sx={{ fontSize: "0.8rem", fontWeight: 600, color: "#323130" }}>
+        <Stack direction="row" alignItems="center" spacing={0.75}>
+          {item.belowMinimum ? (
+            <WarningAmberIcon sx={{ fontSize: 14, color: "#f59e0b" }} />
+          ) : (
+            <CheckCircleOutlineIcon sx={{ fontSize: 14, color: "#107c10" }} />
+          )}
+          <span>{item.productName}</span>
+        </Stack>
+      </TableCell>
+      <TableCell sx={{ fontSize: "0.78rem", color: "#605e5c" }}>
+        {item.saleUnitName}
+      </TableCell>
+      <TableCell align="center" sx={{ fontSize: "0.8rem", fontWeight: 600, color: item.belowMinimum ? "#a4262c" : "#107c10" }}>
+        {item.availableQuantity}
+      </TableCell>
+      <TableCell align="center" sx={{ fontSize: "0.78rem", color: "#605e5c" }}>
+        {item.reservedQuantity}
+      </TableCell>
+      <TableCell align="center" sx={{ fontSize: "0.78rem", color: "#605e5c" }}>
+        {item.damagedQuantity}
+      </TableCell>
+      <TableCell align="center" sx={{ fontSize: "0.78rem", color: "#605e5c" }}>
+        {item.minimumStock}
+      </TableCell>
+    </TableRow>
+  );
+}
+
+// ── Subcomponente: Skeleton de KPI ────────────────────────────────────────────
+function KpiSkeleton() {
+  return (
+    <Card sx={panel}>
+      <CardContent sx={{ p: 2.5, pb: "20px !important" }}>
+        <Skeleton variant="text" width="60%" height={16} sx={{ mb: 1 }} />
+        <Skeleton variant="text" width="40%" height={48} sx={{ mb: 0.5 }} />
+        <Skeleton variant="text" width="50%" height={14} />
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Subcomponente: Skeleton de tabla ──────────────────────────────────────────
+function TableSkeleton({ rows = 4 }: { rows?: number }) {
+  return (
+    <Stack spacing={1} sx={{ p: 2 }}>
+      {Array.from({ length: rows }).map((_, i) => (
+        <Skeleton key={i} variant="rectangular" height={40} sx={{ borderRadius: 1 }} />
+      ))}
+    </Stack>
+  );
+}
+
+// ── Componente principal ──────────────────────────────────────────────────────
 export default function DashboardPage() {
+  const { summary, orders, inventory, isLoading, error } = useDashboard();
+
+  if (error) {
     return (
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            {/* KPIs */}
-            <Grid container spacing={2}>
-                {kpis.map((kpi) => (
-                    <Grid size={{ xs: 12, md: 6, lg: 3 }} key={kpi.label}>
-                        <Card>
-                            <CardContent>
-                                <Stack direction="row" justifyContent="space-between" alignItems="flex-start" gap={1}>
-                                    <Box>
-                                        <Typography variant="body2" color="text.secondary">
-                                            {kpi.label}
-                                        </Typography>
-                                        <Typography variant="h5" sx={{ fontWeight: 800, mt: 0.5 }}>
-                                            {kpi.value}
-                                        </Typography>
-                                    </Box>
-
-                                    <Chip label={kpi.chipLabel} color={kpi.chipColor} variant="outlined" size="small" />
-                                </Stack>
-
-                                <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
-                                    {kpi.helper}
-                                </Typography>
-                            </CardContent>
-                        </Card>
-                    </Grid>
-                ))}
-            </Grid>
-
-            {/* Acciones rápidas + Alertas */}
-            <Grid container spacing={2}>
-                <Grid size={{ xs: 12, lg: 7 }}>
-                    <Card>
-                        <CardContent>
-                            <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
-                                Acciones rápidas
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                                Atajos para operar más rápido
-                            </Typography>
-
-                            <Grid container spacing={2}>
-                                {quickActions.map((qa) => (
-                                    <Grid size={{ xs: 12, md: 6 }} key={qa.title}>
-                                        <Card variant="outlined" sx={{ borderRadius: 3 }}>
-                                            <CardContent>
-                                                <Stack direction="row" spacing={1.5} alignItems="flex-start">
-                                                    <Box
-                                                        sx={{
-                                                            width: 36,
-                                                            height: 36,
-                                                            borderRadius: 2,
-                                                            display: "grid",
-                                                            placeItems: "center",
-                                                            bgcolor: "warning.light",
-                                                            opacity: 0.9,
-                                                        }}
-                                                    >
-                                                        <span aria-hidden="true">{qa.icon}</span>
-                                                    </Box>
-
-                                                    <Box>
-                                                        <Typography sx={{ fontWeight: 800 }}>{qa.title}</Typography>
-                                                        <Typography variant="body2" color="text.secondary">
-                                                            {qa.description}
-                                                        </Typography>
-                                                    </Box>
-                                                </Stack>
-
-                                                {/* botón placeholder (luego conectas navegación/acciones) */}
-                                                <Box sx={{ mt: 1.5 }}>
-                                                    <Button size="small" variant="text">
-                                                        Abrir
-                                                    </Button>
-                                                </Box>
-                                            </CardContent>
-                                        </Card>
-                                    </Grid>
-                                ))}
-                            </Grid>
-                        </CardContent>
-                    </Card>
-                </Grid>
-
-                <Grid size={{ xs: 12, lg: 5 }}>
-                    <Card>
-                        <CardContent>
-                            <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
-                                Producción y alertas
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                                Lo que necesita atención
-                            </Typography>
-
-                            <Stack spacing={2}>
-                                {alerts.map((a) => (
-                                    <Card key={a.title} variant="outlined" sx={{ borderRadius: 3 }}>
-                                        <CardContent>
-                                            <Stack direction="row" spacing={1.5} alignItems="flex-start">
-                                                <Box
-                                                    sx={{
-                                                        width: 36,
-                                                        height: 36,
-                                                        borderRadius: 2,
-                                                        display: "grid",
-                                                        placeItems: "center",
-                                                        bgcolor: "warning.light",
-                                                        opacity: 0.9,
-                                                    }}
-                                                >
-                                                    <span aria-hidden="true">{a.icon}</span>
-                                                </Box>
-
-                                                <Box>
-                                                    <Typography sx={{ fontWeight: 800 }}>{a.title}</Typography>
-                                                    <Typography variant="body2" color="text.secondary">
-                                                        {a.description}
-                                                    </Typography>
-                                                </Box>
-                                            </Stack>
-                                        </CardContent>
-                                    </Card>
-                                ))}
-                            </Stack>
-                        </CardContent>
-                    </Card>
-                </Grid>
-            </Grid>
-
-            {/* Tabla: pedidos recientes */}
-            <Card>
-                <CardContent>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
-                        Pedidos recientes
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                        Estado actual de los últimos pedidos
-                    </Typography>
-
-                    <Box sx={{ overflowX: "auto" }}>
-                        <Table size="small">
-                            <TableHead>
-                                <TableRow>
-                                    <TableCell>Fecha</TableCell>
-                                    <TableCell>Cliente</TableCell>
-                                    <TableCell>Entrega</TableCell>
-                                    <TableCell>Total</TableCell>
-                                    <TableCell>Estado</TableCell>
-                                    <TableCell align="right">Acciones</TableCell>
-                                </TableRow>
-                            </TableHead>
-
-                            <TableBody>
-                                {recentOrders.map((row) => (
-                                    <TableRow key={`${row.date}-${row.customer}`}>
-                                        <TableCell>{row.date}</TableCell>
-                                        <TableCell>{row.customer}</TableCell>
-                                        <TableCell>{row.delivery}</TableCell>
-                                        <TableCell>{row.total}</TableCell>
-                                        <TableCell>
-                                            <Chip
-                                                label={row.statusLabel}
-                                                color={row.statusColor}
-                                                variant="outlined"
-                                                size="small"
-                                            />
-                                        </TableCell>
-                                        <TableCell align="right">
-                                            <Stack direction="row" spacing={1} justifyContent="flex-end">
-                                                {row.actions.map((a) => (
-                                                    <Button key={a.label} size="small" variant="text">
-                                                        {a.label}
-                                                    </Button>
-                                                ))}
-                                            </Stack>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </Box>
-                </CardContent>
-            </Card>
-        </Box>
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">{error}</Alert>
+      </Box>
     );
+  }
+
+  return (
+    <Box sx={{ bgcolor: "background.default", minHeight: "100vh", p: { xs: 1.5, md: 3 } }}>
+      <Grid container spacing={2}>
+
+        {/* ────── FILA 1: KPIs ────── */}
+
+        {/* KPI 1 — Pedidos entregados */}
+        <Grid size={{ xs: 12, sm: 4 }}>
+          {isLoading ? <KpiSkeleton /> : (
+            <Card sx={{ ...panel, borderTop: "3px solid #107c10" }}>
+              <CardContent sx={{ p: 2.5, pb: "20px !important" }}>
+                <Typography variant="caption" sx={{ color: "#605e5c", textTransform: "uppercase", fontWeight: 600, letterSpacing: "0.08em", display: "block", mb: 1 }}>
+                  Pedidos Entregados
+                </Typography>
+                <Typography variant="h3" sx={{ fontWeight: 300, color: "#323130", lineHeight: 1 }}>
+                  {summary?.kpis.completedOrders ?? 0}
+                </Typography>
+                <Typography variant="caption" sx={{ color: "#605e5c", mt: 0.5, display: "block" }}>
+                  Completados hoy
+                </Typography>
+              </CardContent>
+            </Card>
+          )}
+        </Grid>
+
+        {/* KPI 2 — Ingreso del día */}
+        <Grid size={{ xs: 12, sm: 4 }}>
+          {isLoading ? <KpiSkeleton /> : (
+            <Card sx={{ ...panel, borderTop: "3px solid #0078d4" }}>
+              <CardContent sx={{ p: 2.5, pb: "20px !important" }}>
+                <Typography variant="caption" sx={{ color: "#605e5c", textTransform: "uppercase", fontWeight: 600, letterSpacing: "0.08em", display: "block", mb: 1 }}>
+                  Ingreso del Día
+                </Typography>
+                <Typography variant="h3" sx={{ fontWeight: 300, color: "#323130", lineHeight: 1, fontSize: { xs: "1.8rem", md: "2.5rem" } }}>
+                  {formatCOP(summary?.kpis.dailyRevenue ?? 0)}
+                </Typography>
+                <Typography variant="caption" sx={{ color: "#605e5c", mt: 0.5, display: "block" }}>
+                  Pedidos completados hoy
+                </Typography>
+              </CardContent>
+            </Card>
+          )}
+        </Grid>
+
+        {/* KPI 3 — Devoluciones */}
+        <Grid size={{ xs: 12, sm: 4 }}>
+          {isLoading ? <KpiSkeleton /> : (
+            <Card sx={{ ...panel, borderTop: "3px solid #a4262c" }}>
+              <CardContent sx={{ p: 2.5, pb: "20px !important" }}>
+                <Typography variant="caption" sx={{ color: "#605e5c", textTransform: "uppercase", fontWeight: 600, letterSpacing: "0.08em", display: "block", mb: 1 }}>
+                  Devoluciones
+                </Typography>
+                <Typography variant="h3" sx={{ fontWeight: 300, color: "#323130", lineHeight: 1, fontSize: { xs: "1.8rem", md: "2.5rem" } }}>
+                  {formatCOP(summary?.kpis.dailyReturns ?? 0)}
+                </Typography>
+                <Typography variant="caption" sx={{ color: "#605e5c", mt: 0.5, display: "block" }}>
+                  Pérdidas registradas hoy
+                </Typography>
+              </CardContent>
+            </Card>
+          )}
+        </Grid>
+
+        {/* ────── FILA 2: Top clientes + Top productos ────── */}
+
+        {/* Top 3 Clientes */}
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Card sx={panel}>
+            <CardContent sx={{ p: 2.5, pb: "20px !important" }}>
+              <Typography variant="caption" sx={{ color: "#605e5c", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", mb: 1.5 }}>
+                Top 3 Clientes · Hoy
+              </Typography>
+              <Divider sx={{ mb: 1.5, borderColor: "#e1dfdd" }} />
+              {isLoading ? (
+                <TableSkeleton rows={3} />
+              ) : (
+                <Table size="small">
+                  <TableHead>
+                    <TableRow sx={{ bgcolor: "#faf9f8" }}>
+                      <TableCell><Typography variant="caption" fontWeight={700} color="#605e5c" sx={{ textTransform: "uppercase" }}>#</Typography></TableCell>
+                      <TableCell><Typography variant="caption" fontWeight={700} color="#605e5c" sx={{ textTransform: "uppercase" }}>Cliente</Typography></TableCell>
+                      <TableCell align="right"><Typography variant="caption" fontWeight={700} color="#605e5c" sx={{ textTransform: "uppercase" }}>Total</Typography></TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {summary?.topCustomers.map((c, i) => (
+                      <TableRow key={i}>
+                        <TableCell sx={{ fontSize: "0.78rem", color: "#605e5c" }}>{i + 1}</TableCell>
+                        <TableCell sx={{ fontSize: "0.8rem", fontWeight: 600 }}>{c.name}</TableCell>
+                        <TableCell align="right" sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#107c10" }}>{formatCOP(c.total)}</TableCell>
+                      </TableRow>
+                    ))}
+                    {!summary?.topCustomers.length && (
+                      <TableRow>
+                        <TableCell colSpan={3} align="center" sx={{ color: "#605e5c", fontSize: "0.8rem", py: 2 }}>
+                          Sin pedidos completados hoy
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Top 3 Productos */}
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Card sx={panel}>
+            <CardContent sx={{ p: 2.5, pb: "20px !important" }}>
+              <Typography variant="caption" sx={{ color: "#605e5c", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", mb: 1.5 }}>
+                Top 3 Productos · Hoy
+              </Typography>
+              <Divider sx={{ mb: 1.5, borderColor: "#e1dfdd" }} />
+              {isLoading ? (
+                <TableSkeleton rows={3} />
+              ) : (
+                <Table size="small">
+                  <TableHead>
+                    <TableRow sx={{ bgcolor: "#faf9f8" }}>
+                      <TableCell><Typography variant="caption" fontWeight={700} color="#605e5c" sx={{ textTransform: "uppercase" }}>#</Typography></TableCell>
+                      <TableCell><Typography variant="caption" fontWeight={700} color="#605e5c" sx={{ textTransform: "uppercase" }}>Producto</Typography></TableCell>
+                      <TableCell align="right"><Typography variant="caption" fontWeight={700} color="#605e5c" sx={{ textTransform: "uppercase" }}>Ingreso</Typography></TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {summary?.topProducts.map((p, i) => (
+                      <TableRow key={i}>
+                        <TableCell sx={{ fontSize: "0.78rem", color: "#605e5c" }}>{i + 1}</TableCell>
+                        <TableCell sx={{ fontSize: "0.8rem", fontWeight: 600 }}>{p.name}</TableCell>
+                        <TableCell align="right" sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#0078d4" }}>{formatCOP(p.total)}</TableCell>
+                      </TableRow>
+                    ))}
+                    {!summary?.topProducts.length && (
+                      <TableRow>
+                        <TableCell colSpan={3} align="center" sx={{ color: "#605e5c", fontSize: "0.8rem", py: 2 }}>
+                          Sin ventas registradas hoy
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* ────── FILA 3: Tabla pedidos del día ────── */}
+        <Grid size={{ xs: 12 }}>
+          <Card sx={panel}>
+            <CardContent sx={{ p: 2.5, pb: "20px !important" }}>
+              <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1.5}>
+                <Typography variant="caption" sx={{ color: "#323130", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  Pedidos del Día
+                </Typography>
+                <Typography variant="caption" sx={{ color: "#605e5c" }}>
+                  {orders.length} pedido{orders.length !== 1 ? "s" : ""}
+                </Typography>
+              </Stack>
+              <Divider sx={{ mb: 1.5, borderColor: "#e1dfdd" }} />
+              {isLoading ? (
+                <TableSkeleton rows={5} />
+              ) : (
+                <Box sx={{ overflowX: "auto" }}>
+                  <Table size="small" sx={{ "& .MuiTableCell-root": { borderBottom: "1px solid #f3f2f1" } }}>
+                    <TableHead>
+                      <TableRow sx={{ bgcolor: "#faf9f8" }}>
+                        <TableCell width={40} />
+                        <TableCell><Typography variant="caption" fontWeight={700} color="#605e5c" sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>Código</Typography></TableCell>
+                        <TableCell><Typography variant="caption" fontWeight={700} color="#605e5c" sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>Cliente</Typography></TableCell>
+                        <TableCell><Typography variant="caption" fontWeight={700} color="#605e5c" sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>Hora</Typography></TableCell>
+                        <TableCell><Typography variant="caption" fontWeight={700} color="#605e5c" sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>Estado</Typography></TableCell>
+                        <TableCell align="right"><Typography variant="caption" fontWeight={700} color="#605e5c" sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>Total</Typography></TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {orders.map((order) => (
+                        <OrderRow key={order.id} order={order} />
+                      ))}
+                      {orders.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={6} align="center" sx={{ color: "#605e5c", fontSize: "0.8rem", py: 3 }}>
+                            No hay pedidos registrados hoy
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </Box>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* ────── FILA 4: Tabla inventario ────── */}
+        <Grid size={{ xs: 12 }}>
+          <Card sx={panel}>
+            <CardContent sx={{ p: 2.5, pb: "20px !important" }}>
+              <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1.5}>
+                <Typography variant="caption" sx={{ color: "#323130", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  Inventario
+                </Typography>
+                {!isLoading && inventory.some((i) => i.belowMinimum) && (
+                  <Chip
+                    icon={<WarningAmberIcon sx={{ fontSize: "14px !important" }} />}
+                    label={`${inventory.filter((i) => i.belowMinimum).length} bajo mínimo`}
+                    size="small"
+                    sx={{ bgcolor: "#fff4e518", color: "#f59e0b", fontWeight: 700, fontSize: "0.65rem", border: "1px solid #f59e0b40" }}
+                  />
+                )}
+              </Stack>
+              <Divider sx={{ mb: 1.5, borderColor: "#e1dfdd" }} />
+              {isLoading ? (
+                <TableSkeleton rows={5} />
+              ) : (
+                <Box sx={{ overflowX: "auto" }}>
+                  <Table size="small" sx={{ "& .MuiTableCell-root": { borderBottom: "1px solid #f3f2f1" } }}>
+                    <TableHead>
+                      <TableRow sx={{ bgcolor: "#faf9f8" }}>
+                        <TableCell><Typography variant="caption" fontWeight={700} color="#605e5c" sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>Producto</Typography></TableCell>
+                        <TableCell><Typography variant="caption" fontWeight={700} color="#605e5c" sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>Unidad</Typography></TableCell>
+                        <TableCell align="center"><Typography variant="caption" fontWeight={700} color="#605e5c" sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>Disponible</Typography></TableCell>
+                        <TableCell align="center"><Typography variant="caption" fontWeight={700} color="#605e5c" sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>Reservado</Typography></TableCell>
+                        <TableCell align="center"><Typography variant="caption" fontWeight={700} color="#605e5c" sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>Dañado</Typography></TableCell>
+                        <TableCell align="center"><Typography variant="caption" fontWeight={700} color="#605e5c" sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>Mínimo</Typography></TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {inventory.map((item) => (
+                        <InventoryRow key={item.id} item={item} />
+                      ))}
+                      {inventory.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={6} align="center" sx={{ color: "#605e5c", fontSize: "0.8rem", py: 3 }}>
+                            Sin productos en inventario
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </Box>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+
+      </Grid>
+    </Box>
+  );
 }

@@ -12,10 +12,11 @@ export default function OrdersFilters({ value, onChange, onApply, onClear }: Pro
     return (
         <Box
             sx={{
-                p: 2,
-                borderRadius: 3,
-                bgcolor: "background.paper",
-                border: (theme) => `1px solid ${theme.palette.divider}`,
+                p: 2.5,
+                borderRadius: 0,
+                bgcolor: "white",
+                border: "1px solid #e1dfdd",
+                boxShadow: "none",
             }}
         >
             <Stack
@@ -41,6 +42,7 @@ export default function OrdersFilters({ value, onChange, onApply, onClear }: Pro
                         value={value.dateFrom ?? ""}
                         onChange={(e) => onChange({ ...value, dateFrom: e.target.value || null })}
                         InputLabelProps={{ shrink: true }}
+                        sx={{ "& .MuiOutlinedInput-root": { borderRadius: 0 } }}
                     />
 
                     <TextField
@@ -50,6 +52,7 @@ export default function OrdersFilters({ value, onChange, onApply, onClear }: Pro
                         value={value.dateTo ?? ""}
                         onChange={(e) => onChange({ ...value, dateTo: e.target.value || null })}
                         InputLabelProps={{ shrink: true }}
+                        sx={{ "& .MuiOutlinedInput-root": { borderRadius: 0 } }}
                     />
 
                     <TextField
@@ -57,8 +60,8 @@ export default function OrdersFilters({ value, onChange, onApply, onClear }: Pro
                         size="small"
                         placeholder="Ej: confirmed"
                         value={value.status ?? ""}
-                        onChange={(e) => onChange({ ...value, status: e.target.value || null })}
-                        sx={{ minWidth: { xs: "100%", sm: 220 } }}
+                         onChange={(e) => onChange({ ...value, status: e.target.value || null })}
+                        sx={{ minWidth: { xs: "100%", sm: 220 }, "& .MuiOutlinedInput-root": { borderRadius: 0 } }}
                     />
 
                     <TextField
@@ -66,15 +69,23 @@ export default function OrdersFilters({ value, onChange, onApply, onClear }: Pro
                         size="small"
                         placeholder="Código o cliente"
                         value={value.search ?? ""}
-                        onChange={(e) => onChange({ ...value, search: e.target.value })}
-                        sx={{ minWidth: { xs: "100%", sm: 260 } }}
+                         onChange={(e) => onChange({ ...value, search: e.target.value })}
+                        sx={{ minWidth: { xs: "100%", sm: 260 }, "& .MuiOutlinedInput-root": { borderRadius: 0 } }}
                     />
 
-                    <Stack direction="row" spacing={1}>
-                        <Button variant="outlined" onClick={onClear}>
+                     <Stack direction="row" spacing={1}>
+                        <Button
+                            variant="outlined"
+                            onClick={onClear}
+                            sx={{ borderRadius: 0, textTransform: "none", fontWeight: 700, borderColor: "#e1dfdd", color: "#323130" }}
+                        >
                             Limpiar
                         </Button>
-                        <Button variant="contained" color="warning" onClick={onApply}>
+                        <Button
+                            variant="contained"
+                            onClick={onApply}
+                            sx={{ borderRadius: 0, bgcolor: "#6B3A2A", textTransform: "none", fontWeight: 700, boxShadow: "none", "&:hover": { bgcolor: "#8b4f3d" } }}
+                        >
                             Aplicar
                         </Button>
                     </Stack>

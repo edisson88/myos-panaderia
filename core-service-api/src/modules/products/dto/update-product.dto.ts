@@ -6,17 +6,19 @@ import {
   IsBoolean,
 } from 'class-validator';
 
-export class CreateProductDto {
+export class UpdateProductDto {
+  @IsOptional()
   @IsString()
-  name: string;
+  name?: string;
 
   @IsOptional()
   @IsString()
   description?: string;
 
+  @IsOptional()
   @IsNumber()
   @IsPositive()
-  unit_price: number;
+  unit_price?: number;
 
   @IsOptional()
   @IsBoolean()

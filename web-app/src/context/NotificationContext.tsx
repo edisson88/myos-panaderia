@@ -34,10 +34,10 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                 onClose={handleClose}
                 anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
             >
-                <Alert 
-                    onClose={handleClose} 
-                    severity={severity} 
-                    variant="filled" 
+                <Alert
+                    onClose={handleClose}
+                    severity={severity}
+                    variant="filled"
                     sx={{ width: "100%", borderRadius: 2, fontWeight: 600 }}
                 >
                     {message}

@@ -37,6 +37,7 @@ export type OrderListRow = {
 // -----------------------------
 export type OrderItem = {
     id: string;              // order_items.id
+    productId: string;       // order_items.product_id
     productName: string;     // products.name
     quantity: number;        // viene de order_items.quatity (numeric) -> lo mapeas
     unitPrice: number;       // order_items.unit_price (numeric)

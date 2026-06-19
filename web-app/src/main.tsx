@@ -6,6 +6,7 @@ import CssBaseline from '@mui/material/CssBaseline'
 import { theme } from './theme/theme.ts'
 import { AuthProvider } from './context/AuthContext.tsx'
 import { NotificationProvider } from './context/NotificationContext.tsx'
+import 'leaflet/dist/leaflet.css'
 import './index.css'
 
 
