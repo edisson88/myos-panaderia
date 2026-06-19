@@ -8,7 +8,6 @@ import {
     Typography,
     Divider,
     LinearProgress,
-    Chip,
     Tabs,
     Tab,
 } from "@mui/material";
