@@ -14,7 +14,7 @@ import { UpdateCustomerDto } from './dto/update-customer.dto';
 export interface HasuraCustomer {
   id: string;
   name: string;
-  email: string;
+  email: string | null;
   phone: string;
   address: string;
   dni: string | null;
@@ -85,7 +85,7 @@ export class CustomersRepository {
         INSERT_CUSTOMER,
         {
           name: dto.name,
-          email: dto.email,
+          email: dto.email ?? null,
           phone: dto.phone,
           address: dto.address,
           dni: dto.dni ?? null,

@@ -62,7 +62,7 @@ export const GET_CUSTOMER_BY_USER_ID = `
 export const INSERT_CUSTOMER = `
   mutation InsertCustomer(
     $name: String!
-    $email: String!
+    $email: String
     $phone: String!
     $address: String!
     $dni: String

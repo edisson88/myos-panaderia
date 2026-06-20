@@ -18,7 +18,7 @@ import type { Client, CreateClientInput } from "../clientsTypes";
 
 const clientSchema = z.object({
     name: z.string().min(3, "El nombre debe tener al menos 3 caracteres"),
-    email: z.string().email("Correo electrónico inválido").min(1, "El correo es obligatorio"),
+    email: z.string().email("Correo electrónico inválido").optional().or(z.literal("")),
     phone: z.string().min(5, "El teléfono debe tener al menos 5 caracteres"),
     address: z.string().min(5, "La dirección debe tener al menos 5 caracteres"),
     dni: z.string().min(5, "El documento debe tener al menos 5 caracteres").optional().or(z.literal("")),
@@ -76,6 +76,7 @@ export default function ClientDialog({ open, onClose, client, onSave }: ClientDi
             ...data,
             dni: data.dni || undefined,
             label: data.label || undefined,
+            email: data.email || undefined,
         } as CreateClientInput);
     };
 

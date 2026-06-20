@@ -43,7 +43,7 @@ function formatDateTime(isoString: string): string {
 // Se usa texto plano monoespaciado dentro de <pre> — el driver imprime
 // carácter por carácter respetando exactamente las columnas calculadas.
 
-const LINE_WIDTH = 32; // caracteres por línea para 80mm en fuente ~12px monoespaciada
+const LINE_WIDTH = 28; // caracteres por línea para 80mm en fuente ~14px monoespaciada
 
 function escapeHtml(value: string): string {
   return value
@@ -142,7 +142,8 @@ function generateThermalHTML(order: DashboardOrder): string {
     }
     pre {
       font-family: 'Courier New', Courier, monospace;
-      font-size: 12px;
+      font-size: 14px;
+      font-weight: 600;
       line-height: 1.35;
       white-space: pre-wrap;
       word-break: break-word;
