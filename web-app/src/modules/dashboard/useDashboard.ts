@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import {
     fetchDashboardSummary,
@@ -8,6 +8,7 @@ import {
     type DashboardOrder,
     type DashboardInventoryItem,
 } from './dashboard.service';
+
 
 interface DashboardState {
     summary: DashboardSummary | null;
@@ -27,15 +28,12 @@ export function useDashboard() {
         error: null,
     });
 
-    useEffect(() => {
+    const loadDashboard = useCallback(async () => {
         if (!token) return;
 
         let active = true;
-
-        const loadDashboard = async () => {
-            setState((prev) => ({...prev, isLoading: true, error: null}));
-
-            try {
+        setState((prev) => ({...prev, isLoading: true, error: null}));
+        try {
                 const [summary, orders, inventory] = await Promise.all([
                     fetchDashboardSummary(token),
                     fetchRecentOrders(token),
@@ -61,12 +59,13 @@ export function useDashboard() {
                 error: err instanceof Error ? err.message : 'Error desconocido',
             }));
         }
-    };
-
-    void loadDashboard();
 
     return () => {active = false;};
     }, [token]) ;
 
-    return state;
+    useEffect(() => {
+    void loadDashboard();
+    }, [loadDashboard]);
+
+    return {...state, refresh: loadDashboard};
 }

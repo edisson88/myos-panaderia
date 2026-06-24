@@ -284,6 +284,7 @@ export default function CreateOrderDialog({ open, onClose, onCreated }: Props) {
                                                             })
                                                         }
                                                         inputProps={{ min: 1 }}
+                                                        onFocus={(e) => e.target.select()}
                                                         sx={{ "& .MuiOutlinedInput-root": { borderRadius: 0 } }}
                                                     />
                                                 </TableCell>
