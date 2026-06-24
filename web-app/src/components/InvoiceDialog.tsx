@@ -20,7 +20,7 @@ const BAKERY = {
   name: "Panadería Myos",
   address: "Mz E Cs 29 Terrazas de Santa Ana",
   city: "Ibagué",
-  phone: "3103355485",
+  phone: "3118128272",
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

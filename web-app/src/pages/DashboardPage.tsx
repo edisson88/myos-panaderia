@@ -69,7 +69,7 @@ function formatTime(isoString: string): string {
 }
 
 // ── Subcomponente: Fila de pedido con desplegable ─────────────────────────────
-function OrderRow({ order }: { order: DashboardOrder }) {
+function OrderRow({ order, onRefresh }: { order: DashboardOrder, onRefresh: () => void }) {
   const [open, setOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [invoiceOpen, setInvoiceOpen] = useState(false);
@@ -101,6 +101,7 @@ function OrderRow({ order }: { order: DashboardOrder }) {
     try {
       await updateOrderStatus(order.id, newStatus, token);
       setEditStatusOpen(false);
+      onRefresh();
     } catch (err) {
       console.error("Error actualizando estado:", err);
     } finally {
@@ -312,7 +313,7 @@ function OrderRow({ order }: { order: DashboardOrder }) {
       <InvoiceDialog
         open={invoiceOpen}
         order={order}
-        onClose={() => setInvoiceOpen(false)}
+        onClose={() => { setInvoiceOpen(false); onRefresh(); }}
       />
 
       <EditStatusDialog
@@ -385,7 +386,7 @@ function TableSkeleton({ rows = 4 }: { rows?: number }) {
 
 // ── Componente principal ──────────────────────────────────────────────────────
 export default function DashboardPage() {
-  const { summary, orders, inventory, isLoading, error } = useDashboard();
+  const { summary, orders, inventory, isLoading, error, refresh } = useDashboard();
 
   if (error) {
     return (
@@ -572,7 +573,7 @@ export default function DashboardPage() {
                     </TableHead>
                     <TableBody>
                       {orders.map((order) => (
-                        <OrderRow key={order.id} order={order} />
+                        <OrderRow key={order.id} order={order} onRefresh={refresh}/>
                       ))}
                       {orders.length === 0 && (
                         <TableRow>
