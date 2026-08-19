@@ -16,7 +16,7 @@ export interface Client {
 
 export interface CreateClientInput {
     name: string;
-    email: string;
+    email?: string;
     phone: string;
     address: string;
     dni?: string;

@@ -15,7 +15,12 @@ import {
     Grid,
     Stack,
     Typography,
+<<<<<<< HEAD
     Chip,
+=======
+    Divider,
+    LinearProgress,
+>>>>>>> 4b345116bd8deacf2a96444908ff4216e1a5d4ce
     Tabs,
     Tab,
     Table,
