@@ -1,285 +1,306 @@
-import { useState, Fragment, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useState } from "react";
 import {
   Box,
   Card,
   CardContent,
-  Chip,
-  InputAdornment,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  TablePagination,
-  TextField,
   Typography,
-  IconButton,
-  Collapse,
+  Button,
+  Chip,
+  Skeleton,
+  Stack,
+  Alert,
+  InputAdornment,
+  TextField,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
-import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
-//import AddIcon from "@mui/icons-material/Add";
-import RocketLaunchIcon from "@mui/icons-material/RocketLaunch";
-import CancelIcon from "@mui/icons-material/Cancel";
-import DoneAllIcon from "@mui/icons-material/DoneAll";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import { motion, AnimatePresence } from "framer-motion";
+import SettingsIcon from "@mui/icons-material/Settings";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
+import { useProduction } from "../modules/production/useProduction";
+import { upsertProductionConfig, type ProductionConfigItem } from "../modules/production/production.service";
+import ProductionConfigDialog from "../modules/production/components/ProductionConfigDialog";
+import { useAuth } from "../hooks/useAuth";
 
-import type { ProductionOrder } from "../modules/production/production.schema";
+// ── Style tokens ──────────────────────────────────────────────────────────────
+const panel = {
+  borderRadius: 0,
+  boxShadow: "none",
+  border: "1px solid #e1dfdd",
+  bgcolor: "#ffffff",
+} as const;
 
-const INITIAL_PRODUCTION: ProductionOrder[] = [
-  {
-    id: "prod-001",
-    date: new Date().toISOString(),
-    status: "in_progress",
-    notes: "Producción de panes matutina",
-    items: [
-      { id: "item-1", product_id: "1", product_name: "Pan Campesino Grande", quantity_planned: 50, quantity_produced: 25 },
-      { id: "item-2", product_id: "2", product_name: "Croissant de Almendras", quantity_planned: 30, quantity_produced: 0 },
-    ],
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "prod-002",
-    date: new Date().toISOString(),
-    status: "delivered",
-    notes: "Repostería tarde",
-    items: [
-      { id: "item-3", product_id: "2", product_name: "Croissant de Almendras", quantity_planned: 20, quantity_produced: 20 },
-    ],
-    created_at: new Date().toISOString(),
-  },
-];
-
-const Row = ({ order, onAdvance }: { order: ProductionOrder; onAdvance: (id: string) => void }) => {
-  const [open, setOpen] = useState(false);
-
-  const statusConfig: Record<string, { label: string; color: any }> = {
-    draft: { label: "Borrador", color: "default" },
-    in_progress: { label: "En Progreso", color: "warning" },
-    delivered: { label: "Completada", color: "success" },
-    cancelled: { label: "Cancelada", color: "error" },
-  };
-
-  const getStatus = (status: string) => statusConfig[status] || statusConfig["draft"];
-
+// ── Skeleton de tabla ─────────────────────────────────────────────────────────
+function TableSkeleton({ rows = 5 }: { rows?: number }) {
   return (
-    <Fragment>
-      <TableRow sx={{ "& > *": { borderBottom: "unset" } }}>
-        <TableCell>
-          <IconButton aria-label="expand row" size="small" onClick={() => setOpen(!open)}>
-            {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
-          </IconButton>
-        </TableCell>
-        <TableCell>
-          <Typography fontWeight={600}>{new Date(order.date).toLocaleDateString("es-CO", { year: "numeric", month: "long", day: "numeric" })}</Typography>
-          <Typography variant="caption" color="text.secondary">{order.notes || "Sin notas"}</Typography>
-        </TableCell>
-        <TableCell>
-          <Typography fontWeight={700} color="primary.main">{order.items.length} ítems</Typography>
-        </TableCell>
-        <TableCell>
-          <Box sx={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={order.status}
-                initial={{ opacity: 0, scale: 0.8, y: 5 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 1.2, y: -5 }}
-                transition={{ duration: 0.3 }}
-              >
-                <Chip
-                  size="small"
-                  label={getStatus(order.status).label}
-                  color={getStatus(order.status).color}
-                  icon={order.status === 'delivered' ? <CheckCircleIcon /> : undefined}
-                  sx={{ 
-                    fontWeight: 700, 
-                    borderRadius: 0,
-                    transition: 'all 0.4s ease-in-out',
-                    ...(order.status === 'delivered' && {
-                      bgcolor: '#dff6dd',
-                      color: '#107c10',
-                      '& .MuiChip-icon': { color: '#107c10' }
-                    })
-                  }}
-                />
-              </motion.div>
-            </AnimatePresence>
-            
-            {/* Pequeño destello de celebración al completar */}
-            {order.status === 'delivered' && (
-              <motion.div
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: [1, 1.5, 0], opacity: [0, 0.8, 0] }}
-                transition={{ duration: 0.8, times: [0, 0.5, 1] }}
-                style={{
-                  position: 'absolute',
-                  width: '100%',
-                  height: '100%',
-                  borderRadius: '50%',
-                  background: 'radial-gradient(circle, #107c10 0%, transparent 70%)',
-                  zIndex: -1
-                }}
-              />
-            )}
-          </Box>
-        </TableCell>
-        <TableCell align="right">
-          <IconButton 
-            size="small" 
-            color="primary" 
-            title="Avanzar Estado" 
-            onClick={() => order.id && onAdvance(order.id)}
-            disabled={order.status === 'delivered' || order.status === 'cancelled'}
-          >
-            <RocketLaunchIcon fontSize="small" />
-          </IconButton>
-          <IconButton size="small" color="error" title="Cancelar" disabled={order.status === 'delivered' || order.status === 'cancelled'}>
-            <CancelIcon fontSize="small" />
-          </IconButton>
-        </TableCell>
-      </TableRow>
-      <TableRow>
-        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
-          <Collapse in={open} timeout="auto" unmountOnExit>
-            <Box sx={{ margin: 1, p: 2, bgcolor: "#faf9f8", border: "1px solid #e1dfdd", borderRadius: 0 }}>
-              <Typography variant="subtitle2" gutterBottom component="div" fontWeight={700} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                Detalles del Lote <DoneAllIcon fontSize="small" color="action" />
-              </Typography>
-              <Table size="small" aria-label="purchases">
-                <TableHead>
-                  <TableRow>
-                    <TableCell><Typography variant="body2" fontWeight={600}>Producto</Typography></TableCell>
-                    <TableCell align="right"><Typography variant="body2" fontWeight={600}>Cant. Planeada</Typography></TableCell>
-                    <TableCell align="right"><Typography variant="body2" fontWeight={600}>Cant. Producida</Typography></TableCell>
-                    <TableCell align="right"><Typography variant="body2" fontWeight={600}>Faltante</Typography></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {order.items.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell component="th" scope="row">
-                        {item.product_name}
-                      </TableCell>
-                      <TableCell align="right">{item.quantity_planned}</TableCell>
-                      <TableCell align="right">
-                        <Typography color={item.quantity_produced === item.quantity_planned ? "success.main" : "text.secondary"} fontWeight={600}>
-                          {item.quantity_produced}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="right">
-                        {Math.max(0, item.quantity_planned - item.quantity_produced)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Box>
-          </Collapse>
-        </TableCell>
-      </TableRow>
-    </Fragment>
+    <Stack spacing={1} sx={{ p: 2 }}>
+      {Array.from({ length: rows }).map((_, i) => (
+        <Skeleton key={i} variant="rectangular" height={48} sx={{ borderRadius: 0 }} />
+      ))}
+    </Stack>
   );
-};
+}
 
+// ── Componente principal ──────────────────────────────────────────────────────
 export default function ProductionPage() {
-  const location = useLocation();
-  const [orders, setOrders] = useState<ProductionOrder[]>(INITIAL_PRODUCTION);
+  const { token, user } = useAuth();
+  const { items, isLoading, error, refresh } = useProduction();
+  const isAdmin = user?.role === "admin";
+
   const [search, setSearch] = useState("");
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [selectedItem, setSelectedItem] = useState<ProductionConfigItem | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const searchParam = params.get("search");
-    if (searchParam) {
-      setSearch(searchParam);
-    }
-  }, [location.search]);
-
-  const handleAdvanceStatus = (id: string) => {
-    setOrders(prev => prev.map(order => 
-      order.id === id 
-        ? { ...order, status: order.status === 'draft' ? 'in_progress' : 'delivered' } as ProductionOrder
-        : order
-    ));
-  };
-
-  const filteredOrders = orders.filter(
-    (order) => order.notes?.toLowerCase().includes(search.toLowerCase())
+  // ── Filtro de búsqueda ────────────────────────────────────────────────────
+  const filteredItems = items.filter((item) =>
+    item.productName.toLowerCase().includes(search.toLowerCase()),
   );
 
-  return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+  // ── Handlers ──────────────────────────────────────────────────────────────
+  const handleOpenDialog = (item: ProductionConfigItem) => {
+    setSelectedItem(item);
+    setDialogOpen(true);
+  };
 
-      <Card sx={{ borderRadius: 0, boxShadow: "none", border: "1px solid #e1dfdd" }}>
-        <CardContent sx={{ p: 2, paddingBottom: "16px !important" }}>
-          <TextField
-            fullWidth
-            size="small"
-            placeholder="Buscar por notas de producción..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon color="action" />
-                </InputAdornment>
-              ),
-            }}
-            sx={{
-              "& .MuiOutlinedInput-root": {
-                borderRadius: 0,
-                bgcolor: "white",
-                fontSize: "0.85rem",
-              },
-            }}
-          />
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+    setSelectedItem(null);
+  };
+
+  const handleSave = async (
+    productId: string,
+    saleUnitName: string,
+    unitsPerTray: number,
+    notes?: string,
+  ) => {
+    if (!token) return;
+    setIsSaving(true);
+    try {
+      await upsertProductionConfig(
+        { productId, saleUnitName, unitsPerTray, notes },
+        token,
+      );
+      handleCloseDialog();
+      refresh();
+    } catch (err) {
+      console.error("Error guardando configuración:", err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">{error}</Alert>
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+
+      {/* ── Header con búsqueda ── */}
+      <Card sx={panel}>
+        <CardContent sx={{ p: 2, pb: "16px !important" }}>
+          <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={1.5}>
+            <Box>
+              <Typography variant="subtitle1" fontWeight={700} color="#323130">
+                Configuración de Producción
+              </Typography>
+              <Typography variant="caption" color="#605e5c">
+                Define cuántas unidades entran en cada lata por producto
+              </Typography>
+            </Box>
+            <TextField
+              size="small"
+              placeholder="Buscar producto..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ fontSize: 18, color: "#605e5c" }} />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{
+                minWidth: 220,
+                "& .MuiOutlinedInput-root": { borderRadius: 0, fontSize: "0.85rem" },
+              }}
+            />
+          </Stack>
         </CardContent>
       </Card>
 
-      <TableContainer component={Card} sx={{ borderRadius: 0, boxShadow: "none", border: "1px solid #e1dfdd" }}>
-        <Table aria-label="collapsible table" sx={{ minWidth: 650, "& .MuiTableCell-root": { py: 1.5 } }}>
-          <TableHead sx={{ bgcolor: "#faf9f8" }}>
-            <TableRow>
-              <TableCell />
-              <TableCell><Typography variant="subtitle2" fontWeight={700}>Fecha & Notas</Typography></TableCell>
-              <TableCell><Typography variant="subtitle2" fontWeight={700}>Volumen</Typography></TableCell>
-              <TableCell><Typography variant="subtitle2" fontWeight={700}>Estado</Typography></TableCell>
-              <TableCell align="right"><Typography variant="subtitle2" fontWeight={700}>Acciones</Typography></TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredOrders.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((order) => (
-              <Row key={order.id} order={order} onAdvance={handleAdvanceStatus} />
-            ))}
-            {filteredOrders.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
-                  <Typography variant="body1" color="text.secondary">No hay órdenes de producción programadas.</Typography>
+      {/* ── Tabla principal ── */}
+      <TableContainer component={Card} sx={panel}>
+        {isLoading ? (
+          <TableSkeleton rows={6} />
+        ) : (
+          <Table size="small" sx={{ "& .MuiTableCell-root": { borderBottom: "1px solid #f3f2f1" } }}>
+            <TableHead>
+              <TableRow sx={{ bgcolor: "#faf9f8" }}>
+                <TableCell>
+                  <Typography variant="caption" fontWeight={700} color="#605e5c" sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                    Producto
+                  </Typography>
                 </TableCell>
+                <TableCell>
+                  <Typography variant="caption" fontWeight={700} color="#605e5c" sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                    Unidad de venta
+                  </Typography>
+                </TableCell>
+                <TableCell align="center">
+                  <Typography variant="caption" fontWeight={700} color="#605e5c" sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                    Unidades x lata
+                  </Typography>
+                </TableCell>
+                <TableCell>
+                  <Typography variant="caption" fontWeight={700} color="#605e5c" sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                    Estado
+                  </Typography>
+                </TableCell>
+                {isAdmin && (
+                  <TableCell align="right">
+                    <Typography variant="caption" fontWeight={700} color="#605e5c" sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                      Acción
+                    </Typography>
+                  </TableCell>
+                )}
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
-        <TablePagination
-          rowsPerPageOptions={[5, 10, 25]}
-          component="div"
-          count={filteredOrders.length}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={(_, newPage) => setPage(newPage)}
-          onRowsPerPageChange={(e) => {
-            setRowsPerPage(parseInt(e.target.value, 10));
-            setPage(0);
-          }}
-          labelRowsPerPage="Filas por pág:"
-        />
+            </TableHead>
+            <TableBody>
+              {filteredItems.map((item) => (
+                <TableRow
+                  key={item.productId}
+                  sx={{ "&:hover": { bgcolor: "#faf9f8" }, transition: "background 0.15s" }}
+                >
+                  {/* Producto */}
+                  <TableCell>
+                    <Typography variant="body2" fontWeight={600} color="#323130">
+                      {item.productName}
+                    </Typography>
+                  </TableCell>
+
+                  {/* Unidad de venta */}
+                  <TableCell>
+                    <Typography variant="body2" color={item.saleUnitName ? "#323130" : "#a19f9d"}>
+                      {item.saleUnitName ?? "—"}
+                    </Typography>
+                  </TableCell>
+
+                  {/* Unidades x lata */}
+                  <TableCell align="center">
+                    <Typography variant="body2" fontWeight={item.unitsPerTray ? 600 : 400} color={item.unitsPerTray ? "#323130" : "#a19f9d"}>
+                      {item.unitsPerTray ?? "—"}
+                    </Typography>
+                  </TableCell>
+
+                  {/* Estado config */}
+                  <TableCell>
+                    {item.hasConfig ? (
+                      <Chip
+                        icon={<CheckCircleOutlineIcon sx={{ fontSize: "14px !important" }} />}
+                        label="Configurado"
+                        size="small"
+                        sx={{
+                          height: 20,
+                          fontSize: "0.65rem",
+                          fontWeight: 700,
+                          bgcolor: "#dff6dd",
+                          color: "#107c10",
+                          "& .MuiChip-icon": { color: "#107c10" },
+                        }}
+                      />
+                    ) : (
+                      <Chip
+                        icon={<WarningAmberIcon sx={{ fontSize: "14px !important" }} />}
+                        label="Sin configurar"
+                        size="small"
+                        sx={{
+                          height: 20,
+                          fontSize: "0.65rem",
+                          fontWeight: 700,
+                          bgcolor: "#fff4e5",
+                          color: "#f59e0b",
+                          "& .MuiChip-icon": { color: "#f59e0b" },
+                        }}
+                      />
+                    )}
+                  </TableCell>
+
+                  {/* Acción — solo admin */}
+                  {isAdmin && (
+                    <TableCell align="right">
+                      <Button
+                        size="small"
+                        variant={item.hasConfig ? "outlined" : "contained"}
+                        startIcon={<SettingsIcon sx={{ fontSize: "14px !important" }} />}
+                        onClick={() => handleOpenDialog(item)}
+                        sx={{
+                          borderRadius: 0,
+                          fontSize: "0.65rem",
+                          py: 0.25,
+                          px: 1,
+                          ...(item.hasConfig
+                            ? { borderColor: "#e1dfdd", color: "#605e5c" }
+                            : { bgcolor: "#7b3c1e", "&:hover": { bgcolor: "#5c2d15" } }),
+                        }}
+                      >
+                        {item.hasConfig ? "Editar" : "Configurar"}
+                      </Button>
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+
+              {filteredItems.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={isAdmin ? 5 : 4} align="center" sx={{ py: 4 }}>
+                    <Typography variant="body2" color="#605e5c">
+                      {search ? `Sin resultados para "${search}"` : "No hay productos registrados"}
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        )}
+
+        {/* Resumen footer */}
+        {!isLoading && items.length > 0 && (
+          <Box sx={{ px: 2, py: 1.5, borderTop: "1px solid #f3f2f1", bgcolor: "#faf9f8" }}>
+            <Stack direction="row" spacing={2}>
+              <Typography variant="caption" color="#605e5c">
+                Total productos: <strong>{items.length}</strong>
+              </Typography>
+              <Typography variant="caption" color="#107c10">
+                Configurados: <strong>{items.filter((i) => i.hasConfig).length}</strong>
+              </Typography>
+              <Typography variant="caption" color="#f59e0b">
+                Sin configurar: <strong>{items.filter((i) => !i.hasConfig).length}</strong>
+              </Typography>
+            </Stack>
+          </Box>
+        )}
       </TableContainer>
+
+      {/* ── Dialog ── */}
+      <ProductionConfigDialog
+        open={dialogOpen}
+        item={selectedItem}
+        onClose={handleCloseDialog}
+        onSave={handleSave}
+        isLoading={isSaving}
+      />
     </Box>
   );
 }

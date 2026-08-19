@@ -74,19 +74,51 @@ export class DashboardService {
 
   // ── Helpers privados ────────────────────────────────────────────────────────
 
-  private getTodayRange(): {today: string; tomorrow: string} {
+  /**
+   * Límites del DÍA OPERATIVO, en UTC.
+   *
+   * `delivery_date` se persiste como timestamptz a medianoche UTC
+   * (2026-08-19T00:00:00Z), así que sus límites deben calcularse en UTC. Usar
+   * medianoche local desplazaría la ventana cinco horas en Colombia (UTC-5) y
+   * dejaría fuera todas las entregas del día.
+   *
+   * Es el mismo criterio que aplica el módulo de analítica, para que ambas
+   * pantallas informen la misma cifra.
+   */
+  private getDeliveryDayRange(): {deliveryFrom: string; deliveryTo: string} {
     const now = new Date();
 
-    const today = new Date(now);
-    today.setHours(0, 0, 0, 0);
+    const from = new Date(Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+    ));
 
-    const tomorrow = new Date(now);
-    tomorrow.setHours(0, 0, 0, 0);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const to = new Date(from);
+    to.setUTCDate(to.getUTCDate() + 1);
 
     return {
-      today: today.toISOString(),
-      tomorrow: tomorrow.toISOString(),
+      deliveryFrom: from.toISOString(),
+      deliveryTo: to.toISOString(),
+    };
+  }
+
+  /**
+   * Límites del día en hora local, para columnas que guardan un instante real
+   * (`created_at`). Las devoluciones se cuentan el día en que se registran.
+   */
+  private getCreatedDayRange(): {createdFrom: string; createdTo: string} {
+    const now = new Date();
+
+    const from = new Date(now);
+    from.setHours(0, 0, 0, 0);
+
+    const to = new Date(from);
+    to.setDate(to.getDate() + 1);
+
+    return {
+      createdFrom: from.toISOString(),
+      createdTo: to.toISOString(),
     };
   }
 
@@ -149,8 +181,15 @@ export class DashboardService {
   // ── Métodos públicos ────────────────────────────────────────────────────────
 
   async getSummary(): Promise<DashboardSummary>{
-    const { today, tomorrow } = this.getTodayRange();
-    const data = await this.dashboardRepository.getSummaryData(today, tomorrow);
+    const { deliveryFrom, deliveryTo } = this.getDeliveryDayRange();
+    const { createdFrom, createdTo } = this.getCreatedDayRange();
+
+    const data = await this.dashboardRepository.getSummaryData(
+      deliveryFrom,
+      deliveryTo,
+      createdFrom,
+      createdTo,
+    );
 
     return {
       kpis: {
@@ -169,8 +208,11 @@ export class DashboardService {
   }
 
   async getRecentOrders(): Promise<DashboardOrder[]> {
-    const { today, tomorrow } = this.getTodayRange();
-    const data = await this.dashboardRepository.getRecentOrdersData(today, tomorrow);
+    const { deliveryFrom, deliveryTo } = this.getDeliveryDayRange();
+    const data = await this.dashboardRepository.getRecentOrdersData(
+      deliveryFrom,
+      deliveryTo,
+    );
 
     return data.orders.map((order) => this.mapOrder(order));
   }

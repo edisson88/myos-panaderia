@@ -89,22 +89,24 @@ export class DashboardRepository {
   constructor(private readonly hasuraService: HasuraService) {}
 
   async getSummaryData(
-    today: string,
-    tomorrow: string,
+    deliveryFrom: string,
+    deliveryTo: string,
+    createdFrom: string,
+    createdTo: string,
   ): Promise<SummaryData> {
     return this.hasuraService.query<SummaryData>(
       GET_SUMMARY_QUERY,
-      { today, tomorrow }
+      { deliveryFrom, deliveryTo, createdFrom, createdTo }
     );
   }
 
   async getRecentOrdersData(
-    today: string,
-    tomorrow: string,
+    deliveryFrom: string,
+    deliveryTo: string,
   ): Promise<{ orders: RecentOrderData[] }> {
     return this.hasuraService.query<{ orders: RecentOrderData[] }>(
       GET_RECENT_ORDERS_QUERY,
-      { today, tomorrow }
+      { deliveryFrom, deliveryTo }
     );
   }
 
