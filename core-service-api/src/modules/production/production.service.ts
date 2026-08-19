@@ -1,6 +1,25 @@
+// production.service.ts
 import { Injectable } from '@nestjs/common';
-import { ProductionRepository } from './production.repository';
-import { UpdateProductionStatusDto } from './dto/update-production-status.dto';
+import { ProductionRepository, UpsertProductionConfigInput } from './production.repository';
+
+// ── Tipos de respuesta hacia el frontend ──────────────────────────────────────
+
+export interface ProductionConfigItem {
+  productId: string;
+  productName: string;
+  configId: string | null;
+  saleUnitName: string | null;
+  unitsPerTray: number | null;
+  notes: string | null;
+  hasConfig: boolean;
+}
+
+export interface UpsertConfigDto {
+  productId: string;
+  saleUnitName: string;
+  unitsPerTray: number;
+  notes?: string;
+}
 
 @Injectable()
 export class ProductionService {
@@ -8,21 +27,29 @@ export class ProductionService {
     private readonly productionRepository: ProductionRepository,
   ) {}
 
-  async findAll(): Promise<object> {
-    await this.productionRepository.findAll();
-    return { message: 'Production list — TODO' };
+  async getProductionConfig(): Promise<ProductionConfigItem[]> {
+    const data = await this.productionRepository.getProductionConfig();
+
+    return data.products.map((product) => ({
+      productId: product.id,
+      productName: product.name,
+      configId: product.product_production_config?.id ?? null,
+      saleUnitName: product.product_production_config?.sale_unit_name ?? null,
+      unitsPerTray: product.product_production_config?.units_per_tray ?? null,
+      notes: product.product_production_config?.notes ?? null,
+      hasConfig: product.product_production_config !== null,
+    }));
   }
 
-  async findById(id: string): Promise<object> {
-    await this.productionRepository.findById(id);
-    return { message: 'Production detail — TODO', id };
-  }
+  async upsertProductionConfig(dto: UpsertConfigDto): Promise<{ success: boolean }> {
+    const input: UpsertProductionConfigInput = {
+      product_id: dto.productId,
+      sale_unit_name: dto.saleUnitName,
+      units_per_tray: dto.unitsPerTray,
+      notes: dto.notes,
+    };
 
-  async updateStatus(
-    id: string,
-    dto: UpdateProductionStatusDto,
-  ): Promise<object> {
-    await this.productionRepository.updateStatus(id, dto.status);
-    return { message: 'Update production status — TODO', id, status: dto.status };
+    await this.productionRepository.upsertProductionConfig(input);
+    return { success: true };
   }
 }
