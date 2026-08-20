@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { HasuraService } from '../../shared/hasura/hasura.service';
 import { GET_PRODUCTION_CONFIG_QUERY } from './queries/get-production-config.query';
 import { UPSERT_PRODUCTION_CONFIG_QUERY } from './queries/upsert-production-config.query';
+import { GET_DAILY_PRODUCTION_QUERY } from './queries/get-daily-production.query';
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 
@@ -19,6 +20,18 @@ interface ProductWithConfig {
   product_production_config: ProductionConfig | null;
 }
 
+interface OrderItemRaw {
+  quantity: number;
+  product_id: string;
+  products: {
+    name: string;
+    product_production_config: {
+      units_per_tray: number;
+      sale_unit_name: string;
+    } | null;
+  } []  | null;
+}
+
 export interface UpsertProductionConfigInput {
   product_id: string;
   sale_unit_name: string;
@@ -28,7 +41,7 @@ export interface UpsertProductionConfigInput {
 
 @Injectable()
 export class ProductionRepository {
-  constructor(private readonly hasuraService: HasuraService) {}
+  constructor(private readonly hasuraService: HasuraService) { }
 
   async getProductionConfig(): Promise<{ products: ProductWithConfig[] }> {
     return this.hasuraService.query<{ products: ProductWithConfig[] }>(
@@ -47,5 +60,15 @@ export class ProductionRepository {
       units_per_tray: input.units_per_tray,
       notes: input.notes ?? null,
     });
+  }
+
+  async getDailyProduction(
+    today: string,
+    tomorrow: string,
+  ): Promise<{ order_items: OrderItemRaw[] }> {
+    return this.hasuraService.query<{ order_items: OrderItemRaw[] }>(
+      GET_DAILY_PRODUCTION_QUERY,
+      { today, tomorrow },
+    );
   }
 }

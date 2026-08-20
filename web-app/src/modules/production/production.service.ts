@@ -19,6 +19,16 @@ export interface UpsertConfigPayload {
   notes?: string;
 }
 
+export interface DailyProductionItem {
+  productId: string;
+  productName: string;
+  totalUnits: number;
+  saleUnitName: string | null;
+  unitsPerTray: number | null;
+  traysNeeded: number | null;
+  hasConfig: boolean;
+}
+
 export async function fetchProductionConfig(
   token: string,
 ): Promise<ProductionConfigItem[]> {
@@ -36,6 +46,16 @@ export async function upsertProductionConfig(
   return apiRequest<{ success: boolean }>(
     '/production/config',
     { method: 'POST', body: JSON.stringify(payload) },
+    token,
+  );
+}
+
+export async function fetchDailyProduction(
+  token: string,
+): Promise<DailyProductionItem[]> {
+  return apiRequest<DailyProductionItem[]>(
+    '/production/daily',
+    { method: 'GET' },
     token,
   );
 }

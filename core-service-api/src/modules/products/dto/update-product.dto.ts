@@ -18,6 +18,11 @@ export class UpdateProductDto {
   @IsOptional()
   @IsNumber()
   @IsPositive()
+  units_per_sale_unit?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @IsPositive()
   unit_price?: number;
 
   @IsOptional()

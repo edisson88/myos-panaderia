@@ -14,6 +14,7 @@ export interface HasuraProduct {
   id: string;
   name: string;
   description: string | null;
+  units_per_sale_unit: number;
   unit_price: number;
   active: boolean;
   created_at?: string;
@@ -64,6 +65,7 @@ export class ProductsRepository {
       await this.hasuraService.query<InsertProductResponse>(INSERT_PRODUCT, {
         name: dto.name,
         description: dto.description ?? null,
+        units_per_sale_unit: dto.units_per_sale_unit ?? 1,
         unit_price: dto.unit_price,
         active: dto.active ?? true,
       });
@@ -76,6 +78,7 @@ export class ProductsRepository {
         id,
         name: dto.name ?? undefined,
         description: dto.description ?? undefined,
+        units_per_sale_unit: dto.units_per_sale_unit ?? undefined,
         unit_price: dto.unit_price ?? undefined,
         active: dto.active ?? undefined,
       });

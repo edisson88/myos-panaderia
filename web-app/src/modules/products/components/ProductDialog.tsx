@@ -35,6 +35,7 @@ export default function ProductDialog({ open, onClose, product, onSave }: Produc
     defaultValues: {
       name: "",
       description: "",
+      units_per_sale_unit: 1,
       unit_price: 0,
       active: true,
     },
@@ -45,6 +46,7 @@ export default function ProductDialog({ open, onClose, product, onSave }: Produc
       reset({
         name: product?.name ?? "",
         description: product?.description ?? "",
+        units_per_sale_unit: product?.units_per_sale_unit ?? 1,
         unit_price: product?.unit_price ?? 0,
         active: product?.active ?? true,
       });
@@ -98,6 +100,27 @@ export default function ProductDialog({ open, onClose, product, onSave }: Produc
                     error={!!errors.description}
                     helperText={errors.description?.message}
                     size="small"
+                  />
+                )}
+              />
+            </Grid>
+
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <Controller
+                name="units_per_sale_unit"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    onChange={(e) => field.onChange(parseFloat(e.target.value) || 1)}
+                    onFocus={(e) => e.target.select()}
+                    label="Unidades por unidad de venta"
+                    type="number"
+                    fullWidth
+                    error={!!errors.units_per_sale_unit}
+                    helperText={errors.units_per_sale_unit?.message ?? "Ej: si la bolsa trae 4 croissants, escribe 4"}
+                    size="small"
+                    inputProps={{ min: 1 }}
                   />
                 )}
               />

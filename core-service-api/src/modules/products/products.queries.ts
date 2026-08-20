@@ -11,6 +11,7 @@ export const GET_ALL_PRODUCTS = `
       id
       name
       description
+      units_per_sale_unit
       unit_price
       active
       created_at
@@ -25,6 +26,7 @@ export const GET_PRODUCT_BY_ID = `
       id
       name
       description
+      units_per_sale_unit
       unit_price
       active
       created_at
@@ -39,18 +41,21 @@ export const INSERT_PRODUCT = `
   mutation InsertProduct(
     $name: String!
     $description: String
+    $units_per_sale_unit: numeric
     $unit_price: numeric!
     $active: Boolean
   ) {
     insert_products_one(object: {
       name: $name
       description: $description
+      units_per_sale_unit: $units_per_sale_unit
       unit_price: $unit_price
       active: $active
     }) {
       id
       name
       description
+      units_per_sale_unit
       unit_price
       active
       created_at
@@ -64,6 +69,7 @@ export const UPDATE_PRODUCT = `
     $id: uuid!
     $name: String
     $description: String
+    $units_per_sale_unit: numeric
     $unit_price: numeric
     $active: Boolean
   ) {
@@ -72,6 +78,7 @@ export const UPDATE_PRODUCT = `
       _set: {
         name: $name
         description: $description
+        units_per_sale_unit: $units_per_sale_unit
         unit_price: $unit_price
         active: $active
       }
@@ -79,6 +86,7 @@ export const UPDATE_PRODUCT = `
       id
       name
       description
+      units_per_sale_unit
       unit_price
       active
       created_at
