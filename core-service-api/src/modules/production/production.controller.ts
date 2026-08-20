@@ -14,7 +14,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 @Controller('production')
 @UseGuards(JwtAuthGuard)
 export class ProductionController {
-  constructor(private readonly productionService: ProductionService) {}
+  constructor(private readonly productionService: ProductionService) { }
 
   /** GET /api/production/config
    *  Retorna todos los productos activos con su configuración de producción
@@ -33,5 +33,10 @@ export class ProductionController {
   @HttpCode(HttpStatus.OK)
   upsertProductionConfig(@Body() dto: UpsertConfigDto) {
     return this.productionService.upsertProductionConfig(dto);
+  }
+
+  @Get('daily')
+  getDailyProduction() {
+    return this.productionService.getDailyProduction();
   }
 }

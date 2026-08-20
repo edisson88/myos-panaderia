@@ -4,6 +4,7 @@ export const ProductSchema = z.object({
   id: z.string().uuid().optional(),
   name: z.string().min(3, "El nombre debe tener al menos 3 caracteres"),
   description: z.string().optional().nullable(),
+  units_per_sale_unit: z.number().min(1, "Debe ser al menos 1").default(1).optional(),
   unit_price: z.number().min(0, "El precio no puede ser negativo"),
   active: z.boolean().default(true).optional().nullable(),
   created_at: z.string().optional(),

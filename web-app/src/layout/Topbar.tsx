@@ -9,7 +9,6 @@ import {
     useTheme,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
-import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import AddIcon from "@mui/icons-material/Add";
 import LogoutIcon from "@mui/icons-material/Logout";
 import { SIDEBAR_WIDTH } from "./Sidebar";
@@ -58,7 +57,10 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
     };
 
     const handleNewAction = () => {
-        navigate({ pathname: location.pathname === "/" ? "/pedidos" : location.pathname, search: "?openModal=true" });
+        const targetPath = location.pathname === "/clientes" || location.pathname === "/productos"
+            ? location.pathname
+            : "/pedidos";
+        navigate({ pathname: targetPath, search: "?openModal=true" });
     };
 
     const handleLogout = () => {
@@ -121,18 +123,6 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
 
                 {/* Global actions area */}
                 <Box sx={{ flexGrow: 0, display: "flex", gap: 1.5 }}>
-                    {/* Export — hidden on Dashboard */}
-                    {isDesktop && location.pathname !== "/" && (
-                        <Button
-                            variant="outlined"
-                            size="small"
-                            startIcon={<FileDownloadOutlinedIcon />}
-                            sx={{ textTransform: "none", borderRadius: 2, whiteSpace: "nowrap", borderColor: "divider", color: "text.secondary" }}
-                        >
-                            Exportar
-                        </Button>
-                    )}
-
                     {/* Main Action Button */}
                     <Button
                         variant="contained"
