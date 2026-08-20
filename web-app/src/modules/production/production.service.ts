@@ -22,6 +22,8 @@ export interface UpsertConfigPayload {
 export interface DailyProductionItem {
   productId: string;
   productName: string;
+  totalSaleUnits: number;
+  unitsPerSaleUnit: number;
   totalUnits: number;
   saleUnitName: string | null;
   unitsPerTray: number | null;

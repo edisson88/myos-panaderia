@@ -11,6 +11,7 @@ interface ProductionConfig {
   id: string;
   sale_unit_name: string;
   units_per_tray: number;
+  units_per_sale_unit: number | null;
   notes: string | null;
 }
 
@@ -25,6 +26,7 @@ interface OrderItemRaw {
   product_id: string;
   products: {
     name: string;
+    units_per_sale_unit: number;
     product_production_config: {
       units_per_tray: number;
       sale_unit_name: string;

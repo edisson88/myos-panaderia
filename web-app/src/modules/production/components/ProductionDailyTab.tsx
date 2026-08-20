@@ -50,8 +50,10 @@ function generateProductionPDF(items: DailyProductionItem[]): void {
       (item) => `
       <tr class="${!item.hasConfig ? "warning-row" : ""}">
         <td>${item.productName}</td>
-        <td class="center">${item.totalUnits}</td>
+        <td class="center">${item.totalSaleUnits}</td>
         <td class="center">${item.saleUnitName ?? "—"}</td>
+        <td class="center">${item.unitsPerSaleUnit}</td>
+        <td class="center">${item.totalUnits}</td>
         <td class="center">${item.unitsPerTray ?? "—"}</td>
         <td class="center bold">
           ${item.traysNeeded !== null
@@ -249,8 +251,10 @@ function generateProductionPDF(items: DailyProductionItem[]): void {
     <thead>
       <tr>
         <th>Producto</th>
-        <th class="center">Total unidades</th>
+        <th class="center">Bolsas / unidades pedidas</th>
         <th class="center">Unidad</th>
+        <th class="center">Und x bolsa</th>
+        <th class="center">Total unidades</th>
         <th class="center">Und x lata</th>
         <th class="center">Latas a producir</th>
       </tr>
@@ -400,12 +404,22 @@ export default function ProductionDailyTab() {
                 </TableCell>
                 <TableCell align="center">
                   <Typography variant="caption" fontWeight={700} color="#605e5c" sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                    Total unidades
+                    Bolsas / unidades pedidas
                   </Typography>
                 </TableCell>
                 <TableCell align="center">
                   <Typography variant="caption" fontWeight={700} color="#605e5c" sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>
                     Unidad
+                  </Typography>
+                </TableCell>
+                <TableCell align="center">
+                  <Typography variant="caption" fontWeight={700} color="#605e5c" sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                    Und x bolsa
+                  </Typography>
+                </TableCell>
+                <TableCell align="center">
+                  <Typography variant="caption" fontWeight={700} color="#605e5c" sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                    Total unidades
                   </Typography>
                 </TableCell>
                 <TableCell align="center">
@@ -437,10 +451,10 @@ export default function ProductionDailyTab() {
                     </Typography>
                   </TableCell>
 
-                  {/* Total unidades */}
+                  {/* Bolsas / unidades pedidas */}
                   <TableCell align="center">
-                    <Typography variant="body2" fontWeight={700} color="#323130">
-                      {item.totalUnits}
+                    <Typography variant="body2" color="#605e5c">
+                      {item.totalSaleUnits}
                     </Typography>
                   </TableCell>
 
@@ -448,6 +462,20 @@ export default function ProductionDailyTab() {
                   <TableCell align="center">
                     <Typography variant="body2" color={item.saleUnitName ? "#323130" : "#a19f9d"}>
                       {item.saleUnitName ?? "—"}
+                    </Typography>
+                  </TableCell>
+
+                  {/* Und x bolsa */}
+                  <TableCell align="center">
+                    <Typography variant="body2" color="#605e5c">
+                      {item.unitsPerSaleUnit}
+                    </Typography>
+                  </TableCell>
+
+                  {/* Total unidades */}
+                  <TableCell align="center">
+                    <Typography variant="body2" fontWeight={700} color="#323130">
+                      {item.totalUnits}
                     </Typography>
                   </TableCell>
 
@@ -493,7 +521,7 @@ export default function ProductionDailyTab() {
 
               {items.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
                     <Typography variant="body2" color="#605e5c">
                       No hay pedidos registrados hoy
                     </Typography>

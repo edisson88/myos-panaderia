@@ -24,7 +24,9 @@ export interface UpsertConfigDto {
 export interface DailyProductionItem {
   productId: string;
   productName: string;
-  totalUnits: number;
+  totalSaleUnits: number;      // ← renombrado (antes totalUnits)
+  unitsPerSaleUnit: number;    // ← nuevo
+  totalUnits: number;          // ← nuevo (unidades reales)
   saleUnitName: string | null;
   unitsPerTray: number | null;
   traysNeeded: number | null;
@@ -66,7 +68,7 @@ export class ProductionService {
     };
   }
 
-  
+
 
   async getProductionConfig(): Promise<ProductionConfigItem[]> {
     const data = await this.productionRepository.getProductionConfig();
@@ -105,6 +107,7 @@ export class ProductionService {
       name: string;
       totalUnits: number;
       unitsPerTray: number | null;
+      unitsPerSaleUnit: number | null;
       saleUnitName: string | null;
     }>();
 
@@ -118,24 +121,29 @@ export class ProductionService {
         productMap.set(item.product_id, {
           name: item.products[0].name,
           totalUnits: item.quantity,
+          unitsPerSaleUnit: item.products[0].units_per_sale_unit ?? 1, // ← agregar
           unitsPerTray: item.products[0].product_production_config?.units_per_tray ?? null,
           saleUnitName: item.products[0].product_production_config?.sale_unit_name ?? null,
+
         });
       }
     }
 
-    return Array.from(productMap.entries()).map(([productId, data]) => ({
-      productId,
-      productName: data.name,
-      totalUnits: data.totalUnits,
-      saleUnitName: data.saleUnitName,
-      unitsPerTray: data.unitsPerTray,
-      traysNeeded: data.unitsPerTray && data.unitsPerTray > 0
-        ? Math.ceil(data.totalUnits / data.unitsPerTray)
-        : null,
-      hasConfig: data.unitsPerTray !== null,
-    }));
-  }
-
-
+    return Array.from(productMap.entries()).map(([productId, data]) => {
+      const totalRealUnits = data.totalUnits * (data.unitsPerSaleUnit ?? 1); // ← nuevo
+      return {
+        productId,
+        productName: data.name,
+        totalSaleUnits: data.totalUnits,          // ← bolsas/unidades pedidas
+        unitsPerSaleUnit: data.unitsPerSaleUnit,  // ← unidades por bolsa
+        totalUnits: totalRealUnits,               // ← unidades reales a producir
+        saleUnitName: data.saleUnitName,
+        unitsPerTray: data.unitsPerTray,
+        traysNeeded: data.unitsPerTray && data.unitsPerTray > 0
+          ? Math.ceil(totalRealUnits / data.unitsPerTray) // ← usa totalRealUnits
+          : null,
+        hasConfig: data.unitsPerTray !== null,
+      };
+    });
+  }  
 }

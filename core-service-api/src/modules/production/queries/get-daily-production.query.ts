@@ -11,6 +11,7 @@ export const GET_DAILY_PRODUCTION_QUERY = `
       product_id
       products {
         name
+        units_per_sale_unit
         product_production_config {
           units_per_tray
           sale_unit_name
