@@ -54,10 +54,15 @@ export async function upsertProductionConfig(
 
 export async function fetchDailyProduction(
   token: string,
+  dateFrom?: string,
+  dateTo?: string,
 ): Promise<DailyProductionItem[]> {
-  return apiRequest<DailyProductionItem[]>(
-    '/production/daily',
-    { method: 'GET' },
-    token,
-  );
+  const params = new URLSearchParams();
+  if (dateFrom) params.set('dateFrom', dateFrom);
+  if (dateTo) params.set('dateTo', dateTo);
+
+  const query = params.toString();
+  const path = `/production/daily${query ? `?${query}` : ''}`;
+
+  return apiRequest<DailyProductionItem[]>(path, { method: 'GET' }, token);
 }

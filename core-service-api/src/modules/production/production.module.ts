@@ -6,5 +6,6 @@ import { ProductionRepository } from './production.repository';
 @Module({
   controllers: [ProductionController],
   providers: [ProductionService, ProductionRepository],
+  exports: [ProductionService],
 })
 export class ProductionModule {}

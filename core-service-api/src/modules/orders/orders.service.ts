@@ -12,6 +12,7 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { OrderStatus } from './enums/order-status.enum';
+import { getBogotaDateStr } from '../../common/utils/bogota-date.util';
 
 @Injectable()
 export class OrdersService {
@@ -110,7 +111,7 @@ export class OrdersService {
   // ── Helpers ─────────────────────────────────────────────────────────────────
 
   private generateOrderCode(): string {
-    const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const datePart = getBogotaDateStr().replace(/-/g, '');
     const randomPart = Math.random()
       .toString(36)
       .substring(2, 7)

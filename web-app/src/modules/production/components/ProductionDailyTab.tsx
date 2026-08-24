@@ -13,13 +13,18 @@ import {
   Skeleton,
   Stack,
   Alert,
+  TextField,
+  Snackbar,
 } from "@mui/material";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
+import FactCheckIcon from "@mui/icons-material/FactCheck";
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "../../../hooks/useAuth";
 import { fetchDailyProduction, type DailyProductionItem } from "../production.service";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import Button from "@mui/material/Button";
+import ConfirmProductionDialog from "./ConfirmProductionDialog";
+import type { ConfirmProductionResult } from "../../inventory/inventory.service";
 
 const panel = {
   borderRadius: 0,
@@ -30,13 +35,8 @@ const panel = {
 
 // Agregar después de los imports en ProductionDailyTab.tsx
 
-function generateProductionPDF(items: DailyProductionItem[]): void {
-  const today = new Date().toLocaleDateString("es-CO", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+function generateProductionPDF(items: DailyProductionItem[], dateLabel: string): void {
+  const today = dateLabel;
 
   const totalTrays = items
     .filter((i) => i.traysNeeded !== null)
@@ -288,6 +288,27 @@ function generateProductionPDF(items: DailyProductionItem[]): void {
   }, 500);
 }
 
+function getTodayStr(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatDateRangeLabel(dateFrom: string, dateTo: string): string {
+  const formatOne = (d: string) =>
+    new Date(`${d}T00:00:00`).toLocaleDateString("es-CO", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+  if (dateFrom === dateTo) return formatOne(dateFrom);
+  return `${formatOne(dateFrom)} — ${formatOne(dateTo)}`;
+}
+
 function TableSkeleton({ rows = 5 }: { rows?: number }) {
   return (
     <Stack spacing={1} sx={{ p: 2 }}>
@@ -299,28 +320,52 @@ function TableSkeleton({ rows = 5 }: { rows?: number }) {
 }
 
 export default function ProductionDailyTab() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const [items, setItems] = useState<DailyProductionItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [confirmResult, setConfirmResult] = useState<ConfirmProductionResult | null>(null);
+
+  // ── Filtro de fecha (Desde/Hasta) ────────────────────────────────────────
+  const today = getTodayStr();
+  const [dateFrom, setDateFrom] = useState<string>(today);
+  const [dateTo, setDateTo] = useState<string>(today);
+  const [appliedDateFrom, setAppliedDateFrom] = useState<string>(today);
+  const [appliedDateTo, setAppliedDateTo] = useState<string>(today);
 
   const loadData = useCallback(async () => {
     if (!token) return;
     setIsLoading(true);
     setError(null);
     try {
-      const data = await fetchDailyProduction(token);
+      const data = await fetchDailyProduction(token, appliedDateFrom, appliedDateTo);
       setItems(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error cargando producción diaria");
     } finally {
       setIsLoading(false);
     }
-  }, [token]);
+  }, [token, appliedDateFrom, appliedDateTo]);
 
   useEffect(() => {
     void loadData();
   }, [loadData]);
+
+  const handleApplyFilter = () => {
+    setAppliedDateFrom(dateFrom);
+    setAppliedDateTo(dateTo);
+  };
+
+  const handleClearFilter = () => {
+    setDateFrom(today);
+    setDateTo(today);
+    setAppliedDateFrom(today);
+    setAppliedDateTo(today);
+  };
+
+  const isTodayOnly = appliedDateFrom === today && appliedDateTo === today;
 
   // Totales para el footer
   const totalTrays = items
@@ -343,15 +388,57 @@ export default function ProductionDailyTab() {
       {/* Header */}
       <Card sx={panel}>
         <CardContent sx={{ p: 2, pb: "16px !important" }}>
-          <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={1.5}>
+          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={1.5}>
             <Box>
               <Typography variant="subtitle1" fontWeight={700} color="#323130">
                 Producción del día
               </Typography>
               <Typography variant="caption" color="#605e5c">
-                Calculado desde los pedidos de hoy
+                {isTodayOnly
+                  ? "Calculado desde los pedidos de hoy"
+                  : "Calculado desde los pedidos del rango seleccionado"}
               </Typography>
             </Box>
+
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ sm: "flex-end" }}>
+              <TextField
+                label="Desde"
+                type="date"
+                size="small"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                sx={{ "& .MuiOutlinedInput-root": { borderRadius: 0 } }}
+              />
+              <TextField
+                label="Hasta"
+                type="date"
+                size="small"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                sx={{ "& .MuiOutlinedInput-root": { borderRadius: 0 } }}
+              />
+              <Stack direction="row" spacing={1}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={handleClearFilter}
+                  sx={{ borderRadius: 0, textTransform: "none", fontWeight: 700, borderColor: "#e1dfdd", color: "#323130" }}
+                >
+                  Hoy
+                </Button>
+                <Button
+                  size="small"
+                  variant="contained"
+                  onClick={handleApplyFilter}
+                  sx={{ borderRadius: 0, bgcolor: "#7b3c1e", textTransform: "none", fontWeight: 700, boxShadow: "none", "&:hover": { bgcolor: "#5c2d15" } }}
+                >
+                  Aplicar
+                </Button>
+              </Stack>
+            </Stack>
+
             <Stack direction="row" spacing={1} alignItems="center">
               {unconfigured > 0 && (
                 <Chip
@@ -373,7 +460,7 @@ export default function ProductionDailyTab() {
                 variant="outlined"
                 startIcon={<PictureAsPdfIcon />}
                 disabled={isLoading || items.length === 0}
-                onClick={() => generateProductionPDF(items)}
+                onClick={() => generateProductionPDF(items, formatDateRangeLabel(appliedDateFrom, appliedDateTo))}
                 sx={{
                   borderRadius: 0,
                   fontSize: "0.72rem",
@@ -384,6 +471,24 @@ export default function ProductionDailyTab() {
               >
                 Exportar PDF
               </Button>
+              {isAdmin && (
+                <Button
+                  size="small"
+                  variant="contained"
+                  startIcon={<FactCheckIcon />}
+                  disabled={isLoading || items.length === 0}
+                  onClick={() => setConfirmDialogOpen(true)}
+                  sx={{
+                    borderRadius: 0,
+                    fontSize: "0.72rem",
+                    bgcolor: "#7b3c1e",
+                    boxShadow: "none",
+                    "&:hover": { bgcolor: "#5c2d15" },
+                  }}
+                >
+                  Confirmar producción
+                </Button>
+              )}
             </Stack>
           </Stack>
         </CardContent>
@@ -523,7 +628,7 @@ export default function ProductionDailyTab() {
                 <TableRow>
                   <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
                     <Typography variant="body2" color="#605e5c">
-                      No hay pedidos registrados hoy
+                      {isTodayOnly ? "No hay pedidos registrados hoy" : "No hay pedidos registrados en el rango seleccionado"}
                     </Typography>
                   </TableCell>
                 </TableRow>
@@ -551,6 +656,39 @@ export default function ProductionDailyTab() {
           </Box>
         )}
       </TableContainer>
+
+      {/* Confirmar producción */}
+      <ConfirmProductionDialog
+        open={confirmDialogOpen}
+        items={items}
+        dateFrom={appliedDateFrom}
+        dateTo={appliedDateTo}
+        onClose={() => setConfirmDialogOpen(false)}
+        onConfirmed={(result) => {
+          setConfirmDialogOpen(false);
+          setConfirmResult(result);
+          generateProductionPDF(items, formatDateRangeLabel(appliedDateFrom, appliedDateTo));
+        }}
+      />
+
+      <Snackbar
+        open={confirmResult !== null}
+        autoHideDuration={8000}
+        onClose={() => setConfirmResult(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          severity={confirmResult && confirmResult.updated.length > 0 ? "success" : "info"}
+          onClose={() => setConfirmResult(null)}
+          sx={{ borderRadius: 0 }}
+        >
+          {confirmResult && confirmResult.updated.length > 0
+            ? `Producción confirmada. Inventario actualizado: ${confirmResult.updated
+                .map((u) => `${u.productName} +${u.surplusSaleUnits}`)
+                .join(", ")}`
+            : "Producción confirmada. Ningún producto tuvo sobrante para agregar al inventario."}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

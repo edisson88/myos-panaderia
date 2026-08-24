@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { HasuraService } from '../../shared/hasura/hasura.service';
+import { getBogotaDayStart } from '../../common/utils/bogota-date.util';
 import {
   GET_ALL_ORDERS,
   GET_ORDER_BY_ID,
@@ -200,11 +201,24 @@ export class OrdersRepository {
       where['status'] = { _eq: filters['status'] };
     }
 
+    // `created_at` es un instante real (timestamptz), y las fechas del filtro
+    // vienen como YYYY-MM-DD en hora Colombia. Se anclan explícitamente a
+    // America/Bogota (en vez de dejar que Postgres asuma UTC) y "Hasta" usa
+    // límite exclusivo del día siguiente, para no perder los pedidos creados
+    // en la tarde/noche de ese día.
     if (filters['dateFrom'] || filters['dateTo']) {
       const dateFilter: Record<string, string> = {};
-      if (filters['dateFrom'])
-        dateFilter['_gte'] = filters['dateFrom'] as string;
-      if (filters['dateTo']) dateFilter['_lte'] = filters['dateTo'] as string;
+      if (filters['dateFrom']) {
+        dateFilter['_gte'] = getBogotaDayStart(
+          filters['dateFrom'] as string,
+        ).toISOString();
+      }
+      if (filters['dateTo']) {
+        const dayStart = getBogotaDayStart(filters['dateTo'] as string);
+        dateFilter['_lt'] = new Date(
+          dayStart.getTime() + 24 * 60 * 60 * 1000,
+        ).toISOString();
+      }
       where['created_at'] = dateFilter;
     }
 

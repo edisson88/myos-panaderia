@@ -1,6 +1,7 @@
 // production.service.ts
 import { Injectable } from '@nestjs/common';
 import { ProductionRepository, UpsertProductionConfigInput } from './production.repository';
+import { getBogotaRange } from '../../common/utils/bogota-date.util';
 
 // ── Tipos de respuesta hacia el frontend ──────────────────────────────────────
 
@@ -40,19 +41,12 @@ export class ProductionService {
     private readonly productionRepository: ProductionRepository,
   ) { }
 
-  private getCreatedDayRange(): { createdFrom: string; createdTo: string } {
-    const now = new Date();
-
-    const from = new Date(now);
-    from.setHours(0, 0, 0, 0);
-
-    const to = new Date(from);
-    to.setDate(to.getDate() + 1);
-
-    return {
-      createdFrom: from.toISOString(),
-      createdTo: to.toISOString(),
-    };
+  private getCreatedRangeFromDates(
+    dateFrom?: string,
+    dateTo?: string,
+  ): { createdFrom: string; createdTo: string } {
+    const { from, to } = getBogotaRange(dateFrom, dateTo);
+    return { createdFrom: from, createdTo: to };
   }
 
   private getTodayRange(): { today: string; tomorrow: string } {
@@ -96,8 +90,11 @@ export class ProductionService {
     return { success: true };
   }
 
-  async getDailyProduction(): Promise<DailyProductionItem[]> {
-    const { createdFrom, createdTo } = this.getCreatedDayRange();
+  async getDailyProduction(
+    dateFrom?: string,
+    dateTo?: string,
+  ): Promise<DailyProductionItem[]> {
+    const { createdFrom, createdTo } = this.getCreatedRangeFromDates(dateFrom, dateTo);
     const data = await this.productionRepository.getDailyProduction(
       createdFrom,
       createdTo,
