@@ -8,6 +8,7 @@ import type {
 import { MAX_PROJECTED_ROWS } from './analytics.repository';
 import { Granularity } from './enums/granularity.enum';
 import { TtlCache } from '../../common/utils/ttl-cache';
+import { getBogotaDateStr } from '../../common/utils/bogota-date.util';
 
 // ── Contrato hacia el frontend ───────────────────────────────────────────────
 
@@ -175,8 +176,14 @@ export class AnalyticsService {
     return Math.round(ms / 86_400_000);
   }
 
+  /**
+   * "Hoy" en hora Bogotá, no la fecha UTC del servidor: entre las 7pm y
+   * medianoche en Colombia, UTC ya está en el día siguiente, lo que corría
+   * un día hacia adelante el rango por defecto, la recencia de clientes y el
+   * pronóstico de demanda.
+   */
   private todayKey(): string {
-    return new Date().toISOString().slice(0, 10);
+    return getBogotaDateStr();
   }
 
   /**

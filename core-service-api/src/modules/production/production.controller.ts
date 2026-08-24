@@ -4,6 +4,7 @@ import {
   Get,
   Post,
   Body,
+  Query,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -35,8 +36,14 @@ export class ProductionController {
     return this.productionService.upsertProductionConfig(dto);
   }
 
+  /** GET /api/production/daily?dateFrom=2026-08-01&dateTo=2026-08-22
+   *  Sin parámetros, retorna la producción del día actual.
+   */
   @Get('daily')
-  getDailyProduction() {
-    return this.productionService.getDailyProduction();
+  getDailyProduction(
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
+  ) {
+    return this.productionService.getDailyProduction(dateFrom, dateTo);
   }
 }

@@ -8,6 +8,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { ProductsModule } from './modules/products/products.module';
 import { ProductionModule } from './modules/production/production.module';
+import { InventoryModule } from './modules/inventory/inventory.module';
 import { DeliveriesModule } from './modules/deliveries/deliveries.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { ExportsModule } from './modules/exports/exports.module';
@@ -27,6 +28,7 @@ import { ExportsModule } from './modules/exports/exports.module';
     OrdersModule,
     ProductsModule,
     ProductionModule,
+    InventoryModule,
     DeliveriesModule,
     AnalyticsModule,
     ExportsModule,

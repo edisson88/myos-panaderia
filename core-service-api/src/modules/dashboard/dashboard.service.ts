@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DashboardRepository } from './dashboard.repository';
+import { getBogotaRange } from '../../common/utils/bogota-date.util';
 import type { 
   SummaryData, 
   RecentOrderData, 
@@ -104,22 +105,17 @@ export class DashboardService {
   }
 
   /**
-   * Límites del día en hora local, para columnas que guardan un instante real
+   * Límites del día en hora Bogotá, para columnas que guardan un instante real
    * (`created_at`). Las devoluciones se cuentan el día en que se registran.
+   *
+   * Se ancla explícitamente a America/Bogota (UTC-5 fijo) en vez de usar la
+   * hora local del servidor: si el proceso corre en UTC, medianoche del
+   * servidor cae a las 7pm en Colombia y las devoluciones de la noche se
+   * contarían como del día siguiente.
    */
   private getCreatedDayRange(): {createdFrom: string; createdTo: string} {
-    const now = new Date();
-
-    const from = new Date(now);
-    from.setHours(0, 0, 0, 0);
-
-    const to = new Date(from);
-    to.setDate(to.getDate() + 1);
-
-    return {
-      createdFrom: from.toISOString(),
-      createdTo: to.toISOString(),
-    };
+    const { from, to } = getBogotaRange();
+    return { createdFrom: from, createdTo: to };
   }
 
   private calcDailyReturns(data: SummaryData): number {
