@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Box, Tabs, Tab } from "@mui/material";
 import ProductionDailyTab from "../modules/production/components/ProductionDailyTab";
+import InventoryTab from "../modules/production/components/InventoryTab";
 import ProductionConfigTab from "../modules/production/components/ProductionConfigTab";
 
 export default function ProductionPage() {
@@ -29,12 +30,14 @@ export default function ProductionPage() {
         }}
       >
         <Tab label="Producción diaria" />
+        <Tab label="Inventario" />
         <Tab label="Configuración" />
       </Tabs>
 
       {/* Contenido del tab activo */}
       {activeTab === 0 && <ProductionDailyTab />}
-      {activeTab === 1 && <ProductionConfigTab />}
+      {activeTab === 1 && <InventoryTab />}
+      {activeTab === 2 && <ProductionConfigTab />}
 
     </Box>
   );

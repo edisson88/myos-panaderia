@@ -56,13 +56,28 @@ export interface DashboardInventoryItem {
   belowMinimum: boolean;
 }
 
+export interface DashboardFilters {
+  dateFrom: string | null;
+  dateTo: string | null;
+}
+
 // ── API Calls ─────────────────────────────────────────────────────────────────
+
+function buildDateQuery(dateFrom?: string | null, dateTo?: string | null): string {
+    const params = new URLSearchParams();
+    if (dateFrom) params.set('dateFrom', dateFrom);
+    if (dateTo) params.set('dateTo', dateTo);
+    const query = params.toString();
+    return query ? `?${query}` : '';
+}
 
 export async function fetchDashboardSummary(
     token: string,
+    dateFrom?: string | null,
+    dateTo?: string | null,
 ): Promise<DashboardSummary> {
     return apiRequest<DashboardSummary>(
-        '/dashboard/summary',
+        `/dashboard/summary${buildDateQuery(dateFrom, dateTo)}`,
         {method: 'GET'},
         token,
     );
@@ -70,9 +85,11 @@ export async function fetchDashboardSummary(
 
 export async function fetchRecentOrders(
     token: string,
+    dateFrom?: string | null,
+    dateTo?: string | null,
 ): Promise<DashboardOrder[]> {
     return apiRequest<DashboardOrder[]>(
-        '/dashboard/recent-orders',
+        `/dashboard/recent-orders${buildDateQuery(dateFrom, dateTo)}`,
         {method: 'GET'},
         token,
     );

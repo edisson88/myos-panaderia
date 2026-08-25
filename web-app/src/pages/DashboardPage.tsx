@@ -22,10 +22,9 @@ import {
 } from "@mui/material";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
-import WarningAmberIcon from "@mui/icons-material/WarningAmber";
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import { useDashboard } from "../modules/dashboard/useDashboard";
-import type { DashboardOrder, DashboardInventoryItem } from "../modules/dashboard/dashboard.service";
+import type { DashboardOrder, DashboardFilters as DashboardFiltersType } from "../modules/dashboard/dashboard.service";
+import DashboardFilters from "../modules/dashboard/components/DashboardFilters";
 import EditStatusDialog from "../components/EditStatusDialog";
 import ConfirmOrderDialog from "../components/ConfirmOrderDialog";
 import InvoiceDialog from "../components/InvoiceDialog";
@@ -66,6 +65,38 @@ function formatTime(isoString: string): string {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+/** Fecha de hoy (YYYY-MM-DD) en el calendario de Bogotá, sin importar la zona horaria del navegador. */
+function getBogotaTodayStr(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "America/Bogota" });
+}
+
+/** El filtro por defecto es el día de hoy (Bogotá), no un rango vacío. */
+function getDefaultDashboardFilters(): DashboardFiltersType {
+  const today = getBogotaTodayStr();
+  return { dateFrom: today, dateTo: today };
+}
+
+function formatDateLabel(dateStr: string): string {
+  return new Date(`${dateStr}T00:00:00Z`).toLocaleDateString("es-CO", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+/** Descripción legible del rango de fechas activo, para usar en subtítulos ("hoy" cuando coincide con el día actual). */
+function getRangeLabel(filters: DashboardFiltersType): string {
+  const { dateFrom, dateTo } = filters;
+  if (!dateFrom && !dateTo) return "hoy";
+  const today = getBogotaTodayStr();
+  if (dateFrom === today && dateTo === today) return "hoy";
+  if (dateFrom && dateTo && dateFrom !== dateTo) {
+    return `del ${formatDateLabel(dateFrom)} al ${formatDateLabel(dateTo)}`;
+  }
+  return `el ${formatDateLabel(dateFrom ?? dateTo!)}`;
 }
 
 // ── Subcomponente: Fila de pedido con desplegable ─────────────────────────────
@@ -327,39 +358,6 @@ function OrderRow({ order, onRefresh }: { order: DashboardOrder, onRefresh: () =
   );
 }
 
-// ── Subcomponente: Fila de inventario ─────────────────────────────────────────
-function InventoryRow({ item }: { item: DashboardInventoryItem }) {
-  return (
-    <TableRow sx={{ bgcolor: item.belowMinimum ? "#fff4e5" : "transparent" }}>
-      <TableCell sx={{ fontSize: "0.8rem", fontWeight: 600, color: "#323130" }}>
-        <Stack direction="row" alignItems="center" spacing={0.75}>
-          {item.belowMinimum ? (
-            <WarningAmberIcon sx={{ fontSize: 14, color: "#f59e0b" }} />
-          ) : (
-            <CheckCircleOutlineIcon sx={{ fontSize: 14, color: "#107c10" }} />
-          )}
-          <span>{item.productName}</span>
-        </Stack>
-      </TableCell>
-      <TableCell sx={{ fontSize: "0.78rem", color: "#605e5c" }}>
-        {item.saleUnitName}
-      </TableCell>
-      <TableCell align="center" sx={{ fontSize: "0.8rem", fontWeight: 600, color: item.belowMinimum ? "#a4262c" : "#107c10" }}>
-        {item.availableQuantity}
-      </TableCell>
-      <TableCell align="center" sx={{ fontSize: "0.78rem", color: "#605e5c" }}>
-        {item.reservedQuantity}
-      </TableCell>
-      <TableCell align="center" sx={{ fontSize: "0.78rem", color: "#605e5c" }}>
-        {item.damagedQuantity}
-      </TableCell>
-      <TableCell align="center" sx={{ fontSize: "0.78rem", color: "#605e5c" }}>
-        {item.minimumStock}
-      </TableCell>
-    </TableRow>
-  );
-}
-
 // ── Subcomponente: Skeleton de KPI ────────────────────────────────────────────
 function KpiSkeleton() {
   return (
@@ -386,7 +384,17 @@ function TableSkeleton({ rows = 4 }: { rows?: number }) {
 
 // ── Componente principal ──────────────────────────────────────────────────────
 export default function DashboardPage() {
-  const { summary, orders, inventory, isLoading, error, refresh } = useDashboard();
+  const [filters, setFilters] = useState<DashboardFiltersType>(getDefaultDashboardFilters);
+  const [appliedFilters, setAppliedFilters] = useState<DashboardFiltersType>(getDefaultDashboardFilters);
+  const { summary, orders, isLoading, error, refresh } = useDashboard(appliedFilters);
+  const rangeLabel = getRangeLabel(appliedFilters);
+
+  const handleApplyFilters = () => setAppliedFilters(filters);
+  const handleClearFilters = () => {
+    const defaults = getDefaultDashboardFilters();
+    setFilters(defaults);
+    setAppliedFilters(defaults);
+  };
 
   if (error) {
     return (
@@ -398,6 +406,14 @@ export default function DashboardPage() {
 
   return (
     <Box sx={{ bgcolor: "background.default", minHeight: "100vh", p: { xs: 1.5, md: 3 } }}>
+      <Box sx={{ mb: 2 }}>
+        <DashboardFilters
+          value={filters}
+          onChange={setFilters}
+          onApply={handleApplyFilters}
+          onClear={handleClearFilters}
+        />
+      </Box>
       <Grid container spacing={2}>
 
         {/* ────── FILA 1: KPIs ────── */}
@@ -414,7 +430,7 @@ export default function DashboardPage() {
                   {summary?.kpis.completedOrders ?? 0}
                 </Typography>
                 <Typography variant="caption" sx={{ color: "#605e5c", mt: 0.5, display: "block" }}>
-                  Completados hoy
+                  Completados {rangeLabel}
                 </Typography>
               </CardContent>
             </Card>
@@ -433,7 +449,7 @@ export default function DashboardPage() {
                   {formatCOP(summary?.kpis.dailyRevenue ?? 0)}
                 </Typography>
                 <Typography variant="caption" sx={{ color: "#605e5c", mt: 0.5, display: "block" }}>
-                  Pedidos completados hoy
+                  Pedidos completados {rangeLabel}
                 </Typography>
               </CardContent>
             </Card>
@@ -452,7 +468,7 @@ export default function DashboardPage() {
                   {formatCOP(summary?.kpis.dailyReturns ?? 0)}
                 </Typography>
                 <Typography variant="caption" sx={{ color: "#605e5c", mt: 0.5, display: "block" }}>
-                  Pérdidas registradas hoy
+                  Pérdidas registradas {rangeLabel}
                 </Typography>
               </CardContent>
             </Card>
@@ -466,7 +482,7 @@ export default function DashboardPage() {
           <Card sx={panel}>
             <CardContent sx={{ p: 2.5, pb: "20px !important" }}>
               <Typography variant="caption" sx={{ color: "#605e5c", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", mb: 1.5 }}>
-                Top 3 Clientes · Hoy
+                Top 3 Clientes · {rangeLabel}
               </Typography>
               <Divider sx={{ mb: 1.5, borderColor: "#e1dfdd" }} />
               {isLoading ? (
@@ -491,7 +507,7 @@ export default function DashboardPage() {
                     {!summary?.topCustomers.length && (
                       <TableRow>
                         <TableCell colSpan={3} align="center" sx={{ color: "#605e5c", fontSize: "0.8rem", py: 2 }}>
-                          Sin pedidos completados hoy
+                          Sin pedidos completados {rangeLabel}
                         </TableCell>
                       </TableRow>
                     )}
@@ -507,7 +523,7 @@ export default function DashboardPage() {
           <Card sx={panel}>
             <CardContent sx={{ p: 2.5, pb: "20px !important" }}>
               <Typography variant="caption" sx={{ color: "#605e5c", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", mb: 1.5 }}>
-                Top 3 Productos · Hoy
+                Top 3 Productos · {rangeLabel}
               </Typography>
               <Divider sx={{ mb: 1.5, borderColor: "#e1dfdd" }} />
               {isLoading ? (
@@ -532,7 +548,7 @@ export default function DashboardPage() {
                     {!summary?.topProducts.length && (
                       <TableRow>
                         <TableCell colSpan={3} align="center" sx={{ color: "#605e5c", fontSize: "0.8rem", py: 2 }}>
-                          Sin ventas registradas hoy
+                          Sin ventas registradas {rangeLabel}
                         </TableCell>
                       </TableRow>
                     )}
@@ -549,7 +565,7 @@ export default function DashboardPage() {
             <CardContent sx={{ p: 2.5, pb: "20px !important" }}>
               <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1.5}>
                 <Typography variant="caption" sx={{ color: "#323130", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                  Pedidos del Día
+                  Pedidos · {rangeLabel}
                 </Typography>
                 <Typography variant="caption" sx={{ color: "#605e5c" }}>
                   {orders.length} pedido{orders.length !== 1 ? "s" : ""}
@@ -578,59 +594,7 @@ export default function DashboardPage() {
                       {orders.length === 0 && (
                         <TableRow>
                           <TableCell colSpan={6} align="center" sx={{ color: "#605e5c", fontSize: "0.8rem", py: 3 }}>
-                            No hay pedidos registrados hoy
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </Box>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* ────── FILA 4: Tabla inventario ────── */}
-        <Grid size={{ xs: 12 }}>
-          <Card sx={panel}>
-            <CardContent sx={{ p: 2.5, pb: "20px !important" }}>
-              <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1.5}>
-                <Typography variant="caption" sx={{ color: "#323130", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                  Inventario
-                </Typography>
-                {!isLoading && inventory.some((i) => i.belowMinimum) && (
-                  <Chip
-                    icon={<WarningAmberIcon sx={{ fontSize: "14px !important" }} />}
-                    label={`${inventory.filter((i) => i.belowMinimum).length} bajo mínimo`}
-                    size="small"
-                    sx={{ bgcolor: "#fff4e518", color: "#f59e0b", fontWeight: 700, fontSize: "0.65rem", border: "1px solid #f59e0b40" }}
-                  />
-                )}
-              </Stack>
-              <Divider sx={{ mb: 1.5, borderColor: "#e1dfdd" }} />
-              {isLoading ? (
-                <TableSkeleton rows={5} />
-              ) : (
-                <Box sx={{ overflowX: "auto" }}>
-                  <Table size="small" sx={{ "& .MuiTableCell-root": { borderBottom: "1px solid #f3f2f1" } }}>
-                    <TableHead>
-                      <TableRow sx={{ bgcolor: "#faf9f8" }}>
-                        <TableCell><Typography variant="caption" fontWeight={700} color="#605e5c" sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>Producto</Typography></TableCell>
-                        <TableCell><Typography variant="caption" fontWeight={700} color="#605e5c" sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>Unidad</Typography></TableCell>
-                        <TableCell align="center"><Typography variant="caption" fontWeight={700} color="#605e5c" sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>Disponible</Typography></TableCell>
-                        <TableCell align="center"><Typography variant="caption" fontWeight={700} color="#605e5c" sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>Reservado</Typography></TableCell>
-                        <TableCell align="center"><Typography variant="caption" fontWeight={700} color="#605e5c" sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>Dañado</Typography></TableCell>
-                        <TableCell align="center"><Typography variant="caption" fontWeight={700} color="#605e5c" sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>Mínimo</Typography></TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {inventory.map((item) => (
-                        <InventoryRow key={item.id} item={item} />
-                      ))}
-                      {inventory.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={6} align="center" sx={{ color: "#605e5c", fontSize: "0.8rem", py: 3 }}>
-                            Sin productos en inventario
+                            No hay pedidos registrados {rangeLabel}
                           </TableCell>
                         </TableRow>
                       )}

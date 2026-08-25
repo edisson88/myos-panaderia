@@ -3,30 +3,29 @@ import { useAuth } from '../../hooks/useAuth';
 import {
     fetchDashboardSummary,
     fetchRecentOrders,
-    fetchInventory,
     type DashboardSummary,
     type DashboardOrder,
-    type DashboardInventoryItem,
+    type DashboardFilters,
 } from './dashboard.service';
 
 
 interface DashboardState {
     summary: DashboardSummary | null;
     orders: DashboardOrder[];
-    inventory: DashboardInventoryItem[];
     isLoading: boolean;
     error: string | null;
 }
 
-export function useDashboard() {
+export function useDashboard(filters: DashboardFilters) {
     const { token } = useAuth();
     const [state, setState] = useState<DashboardState>({
         summary: null,
         orders: [],
-        inventory: [],
         isLoading: true,
         error: null,
     });
+
+    const { dateFrom, dateTo } = filters;
 
     const loadDashboard = useCallback(async () => {
         if (!token) return;
@@ -34,19 +33,17 @@ export function useDashboard() {
         let active = true;
         setState((prev) => ({...prev, isLoading: true, error: null}));
         try {
-                const [summary, orders, inventory] = await Promise.all([
-                    fetchDashboardSummary(token),
-                    fetchRecentOrders(token),
-                    fetchInventory(token),
+                const [summary, orders] = await Promise.all([
+                    fetchDashboardSummary(token, dateFrom, dateTo),
+                    fetchRecentOrders(token, dateFrom, dateTo),
                 ]);
-            
+
 
             if (!active) return;
 
             setState({
                 summary,
                 orders,
-                inventory,
                 isLoading: false,
                 error: null,
             });
@@ -61,7 +58,7 @@ export function useDashboard() {
         }
 
     return () => {active = false;};
-    }, [token]) ;
+    }, [token, dateFrom, dateTo]) ;
 
     useEffect(() => {
     void loadDashboard();

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DashboardRepository } from './dashboard.repository';
-import { getBogotaRange } from '../../common/utils/bogota-date.util';
+import { getBogotaRange, getBogotaDateStr } from '../../common/utils/bogota-date.util';
 import type { 
   SummaryData, 
   RecentOrderData, 
@@ -80,23 +80,25 @@ export class DashboardService {
    *
    * `delivery_date` se persiste como timestamptz a medianoche UTC
    * (2026-08-19T00:00:00Z), así que sus límites deben calcularse en UTC. Usar
-   * medianoche local desplazaría la ventana cinco horas en Colombia (UTC-5) y
-   * dejaría fuera todas las entregas del día.
+   * medianoche local (-05:00) desplazaría la ventana cinco horas y dejaría
+   * fuera todas las entregas del día.
+   *
+   * "Hoy" (cuando no se pasa dateFrom/dateTo), sin embargo, se decide por el
+   * calendario de Bogotá (`getBogotaDateStr`), no por el UTC del servidor: si
+   * se usara `new Date()` en UTC, entre las 7pm y medianoche hora Colombia el
+   * servidor ya estaría en el día siguiente en UTC y el dashboard dejaría de
+   * mostrar los pedidos del día que aún no ha terminado en Bogotá.
    *
    * Es el mismo criterio que aplica el módulo de analítica, para que ambas
    * pantallas informen la misma cifra.
    */
-  private getDeliveryDayRange(): {deliveryFrom: string; deliveryTo: string} {
-    const now = new Date();
+  private getDeliveryDayRange(dateFrom?: string, dateTo?: string): {deliveryFrom: string; deliveryTo: string} {
+    const fromStr = dateFrom ?? dateTo ?? getBogotaDateStr();
+    const toStr = dateTo ?? dateFrom ?? getBogotaDateStr();
 
-    const from = new Date(Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      now.getUTCDate(),
-    ));
-
-    const to = new Date(from);
-    to.setUTCDate(to.getUTCDate() + 1);
+    const from = new Date(`${fromStr}T00:00:00Z`);
+    const toDayStart = new Date(`${toStr}T00:00:00Z`);
+    const to = new Date(toDayStart.getTime() + 24 * 60 * 60 * 1000);
 
     return {
       deliveryFrom: from.toISOString(),
@@ -113,8 +115,8 @@ export class DashboardService {
    * servidor cae a las 7pm en Colombia y las devoluciones de la noche se
    * contarían como del día siguiente.
    */
-  private getCreatedDayRange(): {createdFrom: string; createdTo: string} {
-    const { from, to } = getBogotaRange();
+  private getCreatedDayRange(dateFrom?: string, dateTo?: string): {createdFrom: string; createdTo: string} {
+    const { from, to } = getBogotaRange(dateFrom, dateTo);
     return { createdFrom: from, createdTo: to };
   }
 
@@ -176,9 +178,9 @@ export class DashboardService {
 
   // ── Métodos públicos ────────────────────────────────────────────────────────
 
-  async getSummary(): Promise<DashboardSummary>{
-    const { deliveryFrom, deliveryTo } = this.getDeliveryDayRange();
-    const { createdFrom, createdTo } = this.getCreatedDayRange();
+  async getSummary(dateFrom?: string, dateTo?: string): Promise<DashboardSummary>{
+    const { deliveryFrom, deliveryTo } = this.getDeliveryDayRange(dateFrom, dateTo);
+    const { createdFrom, createdTo } = this.getCreatedDayRange(dateFrom, dateTo);
 
     const data = await this.dashboardRepository.getSummaryData(
       deliveryFrom,
@@ -203,8 +205,8 @@ export class DashboardService {
     };
   }
 
-  async getRecentOrders(): Promise<DashboardOrder[]> {
-    const { deliveryFrom, deliveryTo } = this.getDeliveryDayRange();
+  async getRecentOrders(dateFrom?: string, dateTo?: string): Promise<DashboardOrder[]> {
+    const { deliveryFrom, deliveryTo } = this.getDeliveryDayRange(dateFrom, dateTo);
     const data = await this.dashboardRepository.getRecentOrdersData(
       deliveryFrom,
       deliveryTo,

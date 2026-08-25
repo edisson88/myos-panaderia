@@ -9,6 +9,7 @@ import OrderDetailDrawer from "../modules/orders/components/OrderDetailDrawer";
 import CreateOrderDialog from "../modules/orders/components/CreateOrderDialog";
 import { fetchOrders, fetchOrderById } from "../modules/orders/orders.service";
 import { useAuth } from "../hooks/useAuth";
+import { downloadInvoicePDF } from "../utils/invoicePdf";
 
 import type {
     OrderDetail,
@@ -89,6 +90,8 @@ export default function OrdersPage() {
     // Dialog de creación — se abre cuando el Topbar navega con ?openModal=true
     const [createOpen, setCreateOpen] = useState(false);
 
+    const [downloadingPdfId, setDownloadingPdfId] = useState<string | null>(null);
+
     useEffect(() => {
         if (searchParams.get("openModal") === "true") {
             setCreateOpen(true);
@@ -168,6 +171,27 @@ export default function OrdersPage() {
         setEditModeOnOpen(false);
     };
 
+    const handleDownloadPdf = async (orderId: string) => {
+        if (!token) return;
+        setDownloadingPdfId(orderId);
+        try {
+            const detail = await fetchOrderById(orderId, token);
+            downloadInvoicePDF({
+                orderCode: detail.orderCode,
+                customerName: detail.customerName,
+                createdAt: detail.orderDate,
+                deliveryDate: detail.deliveryDate,
+                notes: detail.notes,
+                total: detail.total,
+                items: detail.items,
+            });
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Error al generar el PDF");
+        } finally {
+            setDownloadingPdfId(null);
+        }
+    };
+
     const refreshDetail = useCallback(async (orderId: string) => {
         if (!token) return;
         setDetailLoading(true);
@@ -198,7 +222,13 @@ export default function OrdersPage() {
                     <CircularProgress size={32} />
                 </Stack>
             ) : (
-                <OrdersTable rows={rows} onViewDetail={handleViewDetail} onEdit={handleEditOrder} />
+                <OrdersTable
+                    rows={rows}
+                    onViewDetail={handleViewDetail}
+                    onEdit={handleEditOrder}
+                    onDownloadPdf={handleDownloadPdf}
+                    downloadingPdfId={downloadingPdfId}
+                />
             )}
 
             <OrderDetailDrawer
