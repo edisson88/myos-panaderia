@@ -13,3 +13,9 @@ web-app/package.json
 # backend (por si luego aplica)
 core-service-api/node_modules/
 core-service-api/dist/
+
+# pnpm regenera este archivo localmente al aprobar build scripts (bcrypt, @nestjs/core).
+# Su sola presencia convierte el proyecto en pnpm workspace root sin 'packages',
+# lo que rompe "pnpm run build" en Railway ("packages field missing or empty").
+# La forma correcta de aprobar esos scripts es pnpm.onlyBuiltDependencies en package.json.
+core-service-api/pnpm-workspace.yaml
