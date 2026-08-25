@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { DashboardService } from './dashboard.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 
@@ -7,16 +7,22 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
-  /** GET /api/dashboard/summary */
+  /** GET /api/dashboard/summary?dateFrom=2026-01-01&dateTo=2026-01-31 */
   @Get('summary')
-  getSummary() {
-    return this.dashboardService.getSummary();
+  getSummary(
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
+  ) {
+    return this.dashboardService.getSummary(dateFrom, dateTo);
   }
 
-  /** GET /api/dashboard/recent-orders */
+  /** GET /api/dashboard/recent-orders?dateFrom=2026-01-01&dateTo=2026-01-31 */
   @Get('recent-orders')
-  getRecentOrders() {
-    return this.dashboardService.getRecentOrders();
+  getRecentOrders(
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
+  ) {
+    return this.dashboardService.getRecentOrders(dateFrom, dateTo);
   }
 
   /** GET /api/dashboard/inventory */

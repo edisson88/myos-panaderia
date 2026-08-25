@@ -10,6 +10,7 @@ import {
     TableCell,
     TableHead,
     TableRow,
+    Tooltip,
     Typography,
 } from "@mui/material";
 import type { OrderListRow } from "../OrdersType";
@@ -18,6 +19,8 @@ type Props = {
     rows: OrderListRow[];
     onViewDetail: (orderId: string) => void;
     onEdit: (orderId: string) => void;
+    onDownloadPdf: (orderId: string) => void;
+    downloadingPdfId: string | null;
 };
 
 function getStatusChipColor(status: string): "success" | "warning" | "error" | "default" {
@@ -49,7 +52,7 @@ function formatCurrencyCOP(value: number): string {
     }).format(value);
 }
 
-export default function OrdersTable({ rows, onViewDetail, onEdit }: Props) {
+export default function OrdersTable({ rows, onViewDetail, onEdit, onDownloadPdf, downloadingPdfId }: Props) {
     return (
         <Card sx={{ borderRadius: 0, boxShadow: "none", border: "1px solid #e1dfdd" }}>
             <CardContent sx={{ p: 0 }}>
@@ -128,13 +131,19 @@ export default function OrdersTable({ rows, onViewDetail, onEdit }: Props) {
                                                 >
                                                     Editar
                                                 </Button>
-                                                <Button
-                                                    size="small"
-                                                    variant="text"
-                                                    sx={{ borderRadius: 0, fontWeight: 700, textTransform: "none", color: "#605e5c" }}
-                                                >
-                                                    PDF
-                                                </Button>
+                                                <Tooltip title={row.status !== "delivered" ? "Solo disponible para pedidos entregados" : ""}>
+                                                    <span>
+                                                        <Button
+                                                            size="small"
+                                                            variant="text"
+                                                            disabled={row.status !== "delivered" || downloadingPdfId === row.id}
+                                                            onClick={() => onDownloadPdf(row.id)}
+                                                            sx={{ borderRadius: 0, fontWeight: 700, textTransform: "none", color: "#605e5c" }}
+                                                        >
+                                                            {downloadingPdfId === row.id ? "Generando…" : "PDF"}
+                                                        </Button>
+                                                    </span>
+                                                </Tooltip>
                                             </Stack>
                                         </TableCell>
                                     </TableRow>
