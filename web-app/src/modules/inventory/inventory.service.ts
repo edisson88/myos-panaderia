@@ -37,3 +37,22 @@ export async function confirmProduction(
     token,
   );
 }
+
+export interface AdjustQuantityResult {
+  productId: string;
+  previousAvailableQuantity: number;
+  newAvailableQuantity: number;
+}
+
+export async function adjustAvailableQuantity(
+  inventoryId: string,
+  availableQuantity: number,
+  token: string,
+  notes?: string,
+): Promise<AdjustQuantityResult> {
+  return apiRequest<AdjustQuantityResult>(
+    `/inventory/${inventoryId}/quantity`,
+    { method: 'PATCH', body: JSON.stringify({ availableQuantity, notes }) },
+    token,
+  );
+}
