@@ -13,12 +13,19 @@ import {
   Skeleton,
   Stack,
   Alert,
+  TextField,
+  IconButton,
+  CircularProgress,
 } from "@mui/material";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import EditIcon from "@mui/icons-material/Edit";
+import CheckIcon from "@mui/icons-material/Check";
+import CloseIcon from "@mui/icons-material/Close";
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "../../../hooks/useAuth";
 import { fetchInventory, type DashboardInventoryItem } from "../../dashboard/dashboard.service";
+import { adjustAvailableQuantity } from "../../inventory/inventory.service";
 
 const panel = {
   borderRadius: 0,
@@ -37,7 +44,54 @@ function TableSkeleton({ rows = 5 }: { rows?: number }) {
   );
 }
 
-function InventoryRow({ item }: { item: DashboardInventoryItem }) {
+interface InventoryRowProps {
+  item: DashboardInventoryItem;
+  isAdmin: boolean;
+  token: string | null;
+  onSaved: () => void;
+}
+
+function InventoryRow({ item, isAdmin, token, onSaved }: InventoryRowProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [value, setValue] = useState(String(item.availableQuantity));
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const startEditing = () => {
+    setValue(String(item.availableQuantity));
+    setError(null);
+    setIsEditing(true);
+  };
+
+  const cancelEditing = () => {
+    setIsEditing(false);
+    setError(null);
+  };
+
+  const handleSave = async () => {
+    if (!token) return;
+    const parsed = Number(value);
+    if (Number.isNaN(parsed) || parsed < 0) {
+      setError("Cantidad inválida");
+      return;
+    }
+    if (parsed === item.availableQuantity) {
+      setIsEditing(false);
+      return;
+    }
+    setIsSaving(true);
+    setError(null);
+    try {
+      await adjustAvailableQuantity(item.id, parsed, token);
+      setIsEditing(false);
+      onSaved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error guardando");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <TableRow sx={{ bgcolor: item.belowMinimum ? "#fff4e5" : "transparent" }}>
       <TableCell sx={{ fontSize: "0.8rem", fontWeight: 600, color: "#323130" }}>
@@ -54,7 +108,52 @@ function InventoryRow({ item }: { item: DashboardInventoryItem }) {
         {item.saleUnitName}
       </TableCell>
       <TableCell align="center" sx={{ fontSize: "0.8rem", fontWeight: 600, color: item.belowMinimum ? "#a4262c" : "#107c10" }}>
-        {item.availableQuantity}
+        {isAdmin && isEditing ? (
+          <Stack direction="row" spacing={0.5} alignItems="center" justifyContent="center">
+            <TextField
+              type="number"
+              size="small"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              onFocus={(e) => e.target.select()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSave();
+                if (e.key === "Escape") cancelEditing();
+              }}
+              autoFocus
+              disabled={isSaving}
+              error={!!error}
+              inputProps={{ min: 0, style: { textAlign: "center", width: 60 } }}
+              sx={{ "& .MuiOutlinedInput-root": { borderRadius: 0 } }}
+            />
+            {isSaving ? (
+              <CircularProgress size={16} />
+            ) : (
+              <>
+                <IconButton size="small" onClick={handleSave} sx={{ color: "#107c10" }}>
+                  <CheckIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+                <IconButton size="small" onClick={cancelEditing} sx={{ color: "#605e5c" }}>
+                  <CloseIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </>
+            )}
+          </Stack>
+        ) : (
+          <Stack direction="row" spacing={0.5} alignItems="center" justifyContent="center">
+            <span>{item.availableQuantity}</span>
+            {isAdmin && (
+              <IconButton size="small" onClick={startEditing} sx={{ color: "#a19f9d", "&:hover": { color: "#7b3c1e" } }}>
+                <EditIcon sx={{ fontSize: 14 }} />
+              </IconButton>
+            )}
+          </Stack>
+        )}
+        {error && (
+          <Typography variant="caption" color="#d13438" sx={{ display: "block" }}>
+            {error}
+          </Typography>
+        )}
       </TableCell>
       <TableCell align="center" sx={{ fontSize: "0.78rem", color: "#605e5c" }}>
         {item.reservedQuantity}
@@ -70,7 +169,8 @@ function InventoryRow({ item }: { item: DashboardInventoryItem }) {
 }
 
 export default function InventoryTab() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const [inventory, setInventory] = useState<DashboardInventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -152,7 +252,7 @@ export default function InventoryTab() {
             </TableHead>
             <TableBody>
               {inventory.map((item) => (
-                <InventoryRow key={item.id} item={item} />
+                <InventoryRow key={item.id} item={item} isAdmin={isAdmin} token={token} onSaved={loadInventory} />
               ))}
               {inventory.length === 0 && (
                 <TableRow>

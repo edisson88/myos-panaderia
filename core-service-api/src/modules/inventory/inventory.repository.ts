@@ -3,12 +3,19 @@ import { Injectable } from '@nestjs/common';
 import { HasuraService } from '../../shared/hasura/hasura.service';
 import {
   GET_INVENTORY_QUANTITIES,
-  CONFIRM_PRODUCTION_INVENTORY,
+  GET_INVENTORY_BY_ID,
+  UPSERT_INVENTORY_WITH_MOVEMENT,
 } from './queries/inventory.queries';
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 
 interface InventoryQuantityRow {
+  product_id: string;
+  available_quantity: number;
+}
+
+interface InventoryRow {
+  id: string;
   product_id: string;
   available_quantity: number;
 }
@@ -63,12 +70,20 @@ export class InventoryRepository {
     );
   }
 
-  async confirmProduction(
+  async getById(id: string): Promise<InventoryRow | null> {
+    const result = await this.hasuraService.query<{
+      product_inventory_by_pk: InventoryRow | null;
+    }>(GET_INVENTORY_BY_ID, { id });
+
+    return result.product_inventory_by_pk;
+  }
+
+  async upsertWithMovement(
     objects: InventoryUpsertInput[],
   ): Promise<InventoryUpsertResult[]> {
     const result = await this.hasuraService.query<{
       insert_product_inventory: { returning: InventoryUpsertResult[] };
-    }>(CONFIRM_PRODUCTION_INVENTORY, { objects });
+    }>(UPSERT_INVENTORY_WITH_MOVEMENT, { objects });
 
     return result.insert_product_inventory.returning;
   }

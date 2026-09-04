@@ -1,7 +1,16 @@
 // inventory.controller.ts
-import { Controller, Post, Body, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Patch,
+  Body,
+  Param,
+  ParseUUIDPipe,
+  UseGuards,
+} from '@nestjs/common';
 import { InventoryService } from './inventory.service';
 import { ConfirmProductionDto } from './dto/confirm-production.dto';
+import { AdjustInventoryDto } from './dto/adjust-inventory.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -26,5 +35,25 @@ export class InventoryController {
     @CurrentUser() user: JwtPayload,
   ) {
     return this.inventoryService.confirmProduction(dto, user.sub);
+  }
+
+  /** PATCH /api/inventory/:inventoryId/quantity
+   *  Ajusta manualmente la cantidad disponible de una fila de inventario
+   *  (ej: conteo físico, corrección de error). Queda registrado en el
+   *  historial de movimientos. Solo admin.
+   */
+  @Patch(':inventoryId/quantity')
+  @Roles(UserRole.ADMIN)
+  adjustQuantity(
+    @Param('inventoryId', ParseUUIDPipe) inventoryId: string,
+    @Body() dto: AdjustInventoryDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.inventoryService.adjustAvailableQuantity(
+      inventoryId,
+      dto.availableQuantity,
+      dto.notes,
+      user.sub,
+    );
   }
 }

@@ -1,5 +1,5 @@
 // inventory.service.ts
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { ProductionService } from '../production/production.service';
 import {
   InventoryRepository,
@@ -21,6 +21,12 @@ export interface ConfirmProductionResultItem {
 
 export interface ConfirmProductionResult {
   updated: ConfirmProductionResultItem[];
+}
+
+export interface AdjustQuantityResult {
+  productId: string;
+  previousAvailableQuantity: number;
+  newAvailableQuantity: number;
 }
 
 @Injectable()
@@ -112,7 +118,7 @@ export class InventoryService {
       };
     });
 
-    await this.inventoryRepository.confirmProduction(objects);
+    await this.inventoryRepository.upsertWithMovement(objects);
 
     return {
       updated: candidates.map((c) => ({
@@ -123,6 +129,66 @@ export class InventoryService {
         newAvailableQuantity:
           (currentQuantities.get(c.productId) ?? 0) + c.surplusSaleUnits,
       })),
+    };
+  }
+
+  /**
+   * Ajuste manual de la cantidad disponible (ej: conteo físico, corrección de
+   * error). Se identifica por el id de la fila de inventario (no el
+   * producto) porque es lo que ya expone la tabla de Inventario.
+   */
+  async adjustAvailableQuantity(
+    inventoryId: string,
+    newQuantity: number,
+    notes: string | undefined,
+    userId: string,
+  ): Promise<AdjustQuantityResult> {
+    const row = await this.inventoryRepository.getById(inventoryId);
+    if (!row) {
+      throw new NotFoundException(
+        `Inventario con id ${inventoryId} no encontrado`,
+      );
+    }
+
+    const previous = row.available_quantity;
+
+    if (newQuantity === previous) {
+      return {
+        productId: row.product_id,
+        previousAvailableQuantity: previous,
+        newAvailableQuantity: previous,
+      };
+    }
+
+    const object: InventoryUpsertInput = {
+      product_id: row.product_id,
+      available_quantity: newQuantity,
+      reserved_quantity: 0,
+      damaged_quantity: 0,
+      minimum_stock: 0,
+      active: true,
+      finished_product_inventory_movements: {
+        data: [
+          {
+            product_id: row.product_id,
+            movement_type: 'manual_adjustment',
+            quantity: newQuantity - previous,
+            previous_available_quantity: previous,
+            new_available_quantity: newQuantity,
+            notes: notes?.trim() || 'Ajuste manual de inventario',
+            reference_type: 'manual_adjustment',
+            performed_by_user_id: userId,
+          },
+        ],
+      },
+    };
+
+    await this.inventoryRepository.upsertWithMovement([object]);
+
+    return {
+      productId: row.product_id,
+      previousAvailableQuantity: previous,
+      newAvailableQuantity: newQuantity,
     };
   }
 }
